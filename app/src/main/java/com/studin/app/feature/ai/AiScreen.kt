@@ -152,7 +152,7 @@ fun AiScreen(onNavigate: (String) -> Unit, vm: AiViewModel = hiltViewModel()) {
         Column(Modifier.fillMaxSize().padding(padding)) {
             // Shorter label when the effective width (dp ÷ font scale) can't fit "Content check".
             val config = LocalConfiguration.current
-            val compactTabs = config.screenWidthDp / config.fontScale < 340f
+            val compactTabs = config.screenWidthDp / config.fontScale < 390f
             StudINSegmentedTabs(
                 options = AiTab.entries.map { if (compactTabs && it == AiTab.CHECK) "Check" else it.label }, selectedIndex = tab, onSelect = { tab = it },
                 modifier = Modifier.studinContentWidth().padding(horizontal = Spacing.screen),
@@ -286,7 +286,7 @@ private fun TutorTab(vm: AiViewModel, onNavigate: (String) -> Unit) {
 @Composable
 private fun TutorIntro() {
     val config = LocalConfiguration.current
-    val compact = config.screenWidthDp / config.fontScale < 340f
+    val compact = config.screenWidthDp / config.fontScale < 390f
     StudINCard(Modifier.fillMaxWidth(), containerColor = StudINTheme.colors.surfaceSecondary, border = null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StudINIllustration(

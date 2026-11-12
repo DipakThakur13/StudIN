@@ -16,6 +16,8 @@ import com.studin.app.core.data.db.FocusSessionEntity
 import com.studin.app.core.data.repo.Profile
 import com.studin.app.core.designsystem.ThemeMode
 import com.studin.app.core.di.AppEntryPoint
+import com.studin.app.platform.gate.GateActivity
+import com.studin.app.platform.gate.GateLauncher
 import com.studin.app.ui.navigation.Routes
 import com.studin.domain.model.ExamType
 import com.studin.domain.model.FocusState
@@ -68,6 +70,15 @@ class ScreenshotTour {
     private fun capture(variant: String, name: String) = compose.onRoot().captureRoboImage("build/screenshots/$variant/$name.png")
 
     private fun shot(variant: String, name: String, route: String?) { launch(route); capture(variant, name) }
+
+    /** The break gate runs in its own task over the blocked app. */
+    private fun gateShot(variant: String, name: String) {
+        scenario?.close(); scenario = null
+        val intent = Intent(ctx, GateActivity::class.java)
+            .putExtra(GateLauncher.EXTRA_PACKAGE, "com.instagram.android").putExtra(GateLauncher.EXTRA_LABEL, "Instagram")
+            .putExtra(GateLauncher.EXTRA_REASON, "Blocked during focus").putExtra(GateLauncher.EXTRA_DECISION, -1L)
+        ActivityScenario.launch<GateActivity>(intent).use { settle(); capture(variant, name) }
+    }
 
     private fun clickText(text: String): Boolean {
         val nodes = compose.onAllNodesWithText(text, substring = false, ignoreCase = false)
@@ -132,6 +143,7 @@ class ScreenshotTour {
         val fc = ep.focusController()
         fc.start(25, null, "Kinematics"); settle()
         shot("light", "focus_active", Routes.FOCUS)
+        gateShot("light", "gate")
         fc.pause(); settle(); shot("light", "focus_paused", Routes.FOCUS)
         fc.resume(); settle(); fc.finishEarly(); settle(); shot("light", "focus_completed", Routes.FOCUS)
         fc.dismiss(); settle()
@@ -140,6 +152,7 @@ class ScreenshotTour {
         runBlocking { ep.prefs().setTheme(ThemeMode.DARK) }
         mainScreens.forEach { (n, r) -> shot("dark", n, r) }
         shot("dark", "settings", Routes.SETTINGS)
+        fc.start(25, null, "Kinematics"); settle(); gateShot("dark", "gate"); fc.abort("test"); settle(); fc.dismiss(); settle()
         runBlocking { ep.prefs().setTheme(ThemeMode.LIGHT) }
 
         // ---------------- Window sizes

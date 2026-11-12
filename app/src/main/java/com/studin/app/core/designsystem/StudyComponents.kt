@@ -44,6 +44,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -259,13 +261,21 @@ fun StudINInsightChart(
                         drawLine(goalColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)))
                     }
                 }
-                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
+                // Dense data: the whole plot is one tap target (a tap selects the nearest bar) instead of
+                // many sub-48dp buttons. Each bar is still announced with its value by screen readers.
+                Row(
+                    Modifier.fillMaxSize().then(
+                        if (onSelect != null && bars.isNotEmpty()) Modifier.pointerInput(bars.size) {
+                            detectTapGestures { o -> onSelect((o.x / (size.width / bars.size.toFloat())).toInt().coerceIn(0, bars.lastIndex)) }
+                        } else Modifier
+                    ),
+                    horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom,
+                ) {
                     bars.forEachIndexed { i, b ->
                         val selected = selectedIndex == i
                         val frac = (b.value / top.toFloat()) * anim
                         Box(
                             Modifier.weight(1f).fillMaxSize()
-                                .then(if (onSelect != null) Modifier.clickable(role = Role.Button) { onSelect(i) } else Modifier)
                                 .semantics { contentDescription = "${b.accessibilityLabel}: ${b.value} $unit"; this.selected = selected },
                             contentAlignment = Alignment.BottomCenter,
                         ) {
@@ -311,6 +321,7 @@ fun StudINFlashcard(front: String, back: String, revealed: Boolean, onFlip: () -
             .clickable(role = Role.Button, onClickLabel = if (revealed) "Show question" else "Reveal answer", onClick = onFlip)
             .semantics { stateDescription = if (revealed) "Answer shown" else "Answer hidden" },
         shape = StudINShapes.card, color = if (showBack) StudINTheme.colors.surfaceSecondary else MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, StudINTheme.colors.border),
     ) {
         Column(

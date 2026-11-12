@@ -163,7 +163,7 @@ internal fun ConfirmDialog(title: String, message: String, confirmText: String, 
 }
 
 /** Minimum comfortable width per button (in dp at 1.0× font scale) before a group stacks vertically. */
-private val MinButtonWidth = 140.dp
+private val MinButtonWidth = 156.dp
 
 /**
  * Equal-weight button group that stays on one row when there is room and stacks full-width

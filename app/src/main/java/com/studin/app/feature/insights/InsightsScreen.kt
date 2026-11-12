@@ -4,7 +4,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -274,7 +275,18 @@ private fun HeatmapCard(s: InsightsState) {
                 }
                 Spacer(Modifier.height(Spacing.xxs))
                 (0 until 7).forEach { d ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // One tap target per weekday row (a tap selects the nearest day) rather than 84
+                    // sub-48dp buttons; every day is still announced individually by screen readers.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.pointerInput(s.heatmap, size) {
+                            detectTapGestures { o ->
+                                val w = ((o.x - labelW.toPx()) / (size.toPx() + gap.toPx())).toInt()
+                                val c = s.heatmap.getOrNull(w)?.getOrNull(d)
+                                if (o.x >= labelW.toPx() && c?.minutes != null) selectedDay = if (selectedDay == c.day) null else c.day
+                            }
+                        },
+                    ) {
                         Text(
                             if (d % 2 == 0) java.time.DayOfWeek.of(d + 1).getDisplayName(TextStyle.NARROW, locale) else "",
                             style = MaterialTheme.typography.labelSmall, color = StudINTheme.colors.textSecondary,
@@ -290,7 +302,6 @@ private fun HeatmapCard(s: InsightsState) {
                                     else Modifier
                                         .background(levelColor(c.level), RoundedCornerShape(4.dp))
                                         .then(if (isSel) Modifier.border(2.dp, StudINTheme.colors.accent, RoundedCornerShape(4.dp)) else Modifier)
-                                        .clickable(role = Role.Button) { selectedDay = if (isSel) null else c.day }
                                         .semantics {
                                             contentDescription = "${date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)} ${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.FULL, locale)}: ${c.minutes} minutes"
                                             selected = isSel

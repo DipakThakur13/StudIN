@@ -10,7 +10,7 @@ python3 design/svg2vd.py design/logo/ic_launcher_background.svg app/src/main/res
 python3 design/svg2vd.py design/logo/ic_launcher_monochrome.svg app/src/main/res/drawable/ic_launcher_monochrome.xml
 python3 design/svg2vd.py design/logo/splash_mark.svg app/src/main/res/drawable/splash_mark.xml
 python3 design/svg2vd.py design/logo/ic_stat_studin.svg app/src/main/res/drawable/ic_stat_studin.xml --width 24
-for f in design/illustrations/ill_*.svg; do python3 design/svg2vd.py "$f" "app/src/main/res/drawable/$(basename "$f" .svg).xml"; done
+for f in design/illustrations/ill_*.svg; do python3 design/svg2vd.py "$f" "app/src/main/res/drawable/$(basename "$f" .svg).xml" --width 200; done
 ```
 
 `svg2vd.py` supports the subset used here: path/circle/ellipse/rect/line, groups with

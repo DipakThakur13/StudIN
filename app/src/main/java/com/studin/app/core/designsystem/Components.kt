@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -112,8 +113,15 @@ fun StudINScaffold(
         snackbarHost = { if (snackbarHostState != null) SnackbarHost(snackbarHostState) },
         floatingActionButton = floatingActionButton,
         bottomBar = bottomBar,
-        content = content,
-    )
+    ) { inner ->
+        // Content starts *below* the top bar (not behind it), so scrolled items are clipped at the
+        // bar's edge and never sit hidden-but-focusable under it for TalkBack or touch.
+        val ld = androidx.compose.ui.platform.LocalLayoutDirection.current
+        val top = inner.calculateTopPadding()
+        Box(Modifier.fillMaxSize().padding(top = top).consumeWindowInsets(PaddingValues(top = top))) {
+            content(PaddingValues(start = inner.calculateStartPadding(ld), end = inner.calculateEndPadding(ld), top = 0.dp, bottom = inner.calculateBottomPadding()))
+        }
+    }
 }
 
 /**

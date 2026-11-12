@@ -104,8 +104,10 @@ class GateActivity : ComponentActivity() {
         val label = intent.getStringExtra(GateLauncher.EXTRA_LABEL) ?: "This app"
         val reason = intent.getStringExtra(GateLauncher.EXTRA_REASON) ?: "Blocked during focus"
         val decisionId = intent.getLongExtra(GateLauncher.EXTRA_DECISION, -1L)
+        // Built once, outside composition, so recomposition doesn't create a new flow each time.
+        val themeFlow = prefs.settings.map { it.themeMode }
         setContent {
-            val theme by prefs.settings.map { it.themeMode }.collectAsStateWithLifecycle(ThemeMode.SYSTEM)
+            val theme by themeFlow.collectAsStateWithLifecycle(ThemeMode.SYSTEM)
             StudinTheme(theme) {
                 val ui by vm.ui.collectAsStateWithLifecycle()
                 val snap by vm.controller.snapshot.collectAsStateWithLifecycle()

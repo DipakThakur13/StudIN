@@ -176,7 +176,3 @@ private fun StudinNavigationRail(isSelected: (TopLevel) -> Boolean, onSelect: (T
         }
     }
 }
-
-/** V1 screens added this to clear the floating bar. The scaffold now handles it. */
-@Deprecated("The navigation scaffold reserves space for the bar; remove this padding.")
-val BottomBarPadding = 0.dp

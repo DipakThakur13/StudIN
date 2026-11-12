@@ -139,7 +139,6 @@ fun StudinTheme(mode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () -> U
     CompositionLocalProvider(
         LocalStudINColors provides studin,
         LocalReducedMotion provides reducedMotion,
-        LocalStudinExtras provides legacyExtras(studin, scheme.primary),
     ) {
         MaterialTheme(colorScheme = scheme, typography = StudINTypography, shapes = MaterialShapes) {
             CompositionLocalProvider(LocalContentColor provides scheme.onBackground, content = content)
