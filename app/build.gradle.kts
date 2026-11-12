@@ -41,6 +41,16 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all {
+                it.systemProperty("roborazzi.test.record", "true")
+                it.systemProperty("robolectric.graphicsMode", "NATIVE")
+                it.maxHeapSize = "3g"
+            }
+        }
+    }
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "META-INF/DEPENDENCIES")
     }
@@ -100,4 +110,13 @@ dependencies {
     implementation(libs.mlkit.text.recognition)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.androidx.work.testing)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
