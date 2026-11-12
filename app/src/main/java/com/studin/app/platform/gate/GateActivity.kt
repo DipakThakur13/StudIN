@@ -8,17 +8,12 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,17 +27,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Quiz
-import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.SelfImprovement
-import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.WarningAmber
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,29 +47,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.studin.app.R
 import com.studin.app.core.data.prefs.UserPreferences
-import com.studin.app.core.designsystem.Badge
-import com.studin.app.core.designsystem.GhostButton
-import com.studin.app.core.designsystem.GlassCard
-import com.studin.app.core.designsystem.GradientButton
-import com.studin.app.core.designsystem.IconBubble
-import com.studin.app.core.designsystem.MonoNumbers
-import com.studin.app.core.designsystem.ProgressRing
-import com.studin.app.core.designsystem.Studin
-import com.studin.app.core.designsystem.StudinColors
+import com.studin.app.core.designsystem.Motion
+import com.studin.app.core.designsystem.Spacing
+import com.studin.app.core.designsystem.StudINBadge
+import com.studin.app.core.designsystem.StudINCard
+import com.studin.app.core.designsystem.StudINIllustration
+import com.studin.app.core.designsystem.StudINOutlinedButton
+import com.studin.app.core.designsystem.StudINPrimaryButton
+import com.studin.app.core.designsystem.StudINProgressRing
+import com.studin.app.core.designsystem.StudINSecondaryButton
+import com.studin.app.core.designsystem.StudINTheme
+import com.studin.app.core.designsystem.StudINType
 import com.studin.app.core.designsystem.StudinTheme
 import com.studin.app.core.designsystem.ThemeMode
+import com.studin.app.core.designsystem.motionDuration
 import com.studin.domain.quiz.McqQuestion
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.map
@@ -108,7 +105,7 @@ class GateActivity : ComponentActivity() {
         val reason = intent.getStringExtra(GateLauncher.EXTRA_REASON) ?: "Blocked during focus"
         val decisionId = intent.getLongExtra(GateLauncher.EXTRA_DECISION, -1L)
         setContent {
-            val theme by prefs.settings.map { it.themeMode }.collectAsStateWithLifecycle(ThemeMode.DARK)
+            val theme by prefs.settings.map { it.themeMode }.collectAsStateWithLifecycle(ThemeMode.SYSTEM)
             StudinTheme(theme) {
                 val ui by vm.ui.collectAsStateWithLifecycle()
                 val snap by vm.controller.snapshot.collectAsStateWithLifecycle()
@@ -134,6 +131,11 @@ class GateActivity : ComponentActivity() {
     }
 }
 
+/** Text for the earned-break action (unit-tested in GateUiTest). */
+internal fun breakActionLabel(questions: Int, passMinutes: Int): String =
+    if (questions > 0) "Answer $questions question${if (questions > 1) "s" else ""} for a $passMinutes-min break"
+    else "Take a short pause for a $passMinutes-min break"
+
 @Composable
 private fun GateScreen(
     label: String,
@@ -147,35 +149,42 @@ private fun GateScreen(
     onContinue: () -> Unit,
     onEmergency: () -> Unit,
 ) {
-    Box(
-        Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xF0060E26), Color(0xFA030A1C)))),
-        contentAlignment = Alignment.Center,
-    ) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
         Column(
-            Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(20.dp),
+            Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(Spacing.screen),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            GlassCard(Modifier.fillMaxWidth(), highlight = true, contentPadding = 22.dp) {
-                AnimatedContent(ui.step, transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(150)) }, label = "gate") { step ->
-                    when (step) {
-                        GateStep.Choice -> ChoiceContent(label, reason, remainingMin, ui, onBack, onChallenge)
-                        is GateStep.Quiz -> QuizContent(step, onAnswer, onNext)
-                        is GateStep.Breathe -> BreatheContent(step.secondsLeft)
-                        is GateStep.Granted -> GrantedContent(step, label, onContinue, onBack)
+            Column(Modifier.widthIn(max = 480.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                val inMs = motionDuration(Motion.card)
+                val outMs = motionDuration(Motion.small)
+                StudINCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(Spacing.xl)) {
+                    AnimatedContent(
+                        ui.step,
+                        transitionSpec = { fadeIn(tween(inMs)) togetherWith fadeOut(tween(outMs)) },
+                        contentKey = { it::class },
+                        label = "gate",
+                    ) { step ->
+                        when (step) {
+                            GateStep.Choice -> ChoiceContent(label, reason, remainingMin, ui, onBack, onChallenge)
+                            is GateStep.Quiz -> QuizContent(step, onAnswer, onNext)
+                            is GateStep.Breathe -> BreatheContent(step.secondsLeft)
+                            is GateStep.Granted -> GrantedContent(step, label, onContinue, onBack)
+                        }
                     }
                 }
-            }
-            Spacer(Modifier.height(16.dp))
-            if (ui.step !is GateStep.Granted) {
-                TextButton(
-                    onClick = onEmergency,
-                    modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Emergency: open $label anyway" },
-                ) {
-                    Icon(Icons.Rounded.Warning, null, tint = Studin.extras.warning, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Emergency – open anyway", color = Studin.extras.warning, style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(Spacing.md))
+                if (ui.step !is GateStep.Granted) {
+                    // Always available: the student is never trapped.
+                    TextButton(
+                        onClick = onEmergency,
+                        modifier = Modifier.heightIn(min = Spacing.touchTarget).semantics { contentDescription = "Emergency: open $label anyway" },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) {
+                        Icon(Icons.Rounded.WarningAmber, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(Spacing.xs))
+                        Text("Emergency — open anyway", style = MaterialTheme.typography.labelLarge)
+                    }
                 }
             }
         }
@@ -185,103 +194,122 @@ private fun GateScreen(
 @Composable
 private fun ChoiceContent(label: String, reason: String, remainingMin: Int, ui: GateUi, onBack: () -> Unit, onChallenge: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        IconBubble(Icons.Rounded.School, StudinColors.Mint, 64.dp)
-        Spacer(Modifier.height(14.dp))
-        Text("$label can wait", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(6.dp))
-        Badge(reason.take(60))
-        Spacer(Modifier.height(10.dp))
-        Text(
-            if (remainingMin > 0) "$remainingMin min left in your focus session. You're doing great." else "You're in a focus session.",
-            style = MaterialTheme.typography.bodyMedium, color = Studin.extras.muted, textAlign = TextAlign.Center,
+        StudINIllustration(R.drawable.ill_focus, contentDescription = null, height = 132.dp)
+        Spacer(Modifier.height(Spacing.md))
+        Text("$label can wait", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { heading() })
+        Spacer(Modifier.height(Spacing.xs))
+        StudINBadge(reason.take(80), container = StudINTheme.colors.surfaceSecondary, content = StudINTheme.colors.textSecondary)
+        Spacer(Modifier.height(Spacing.sm))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.Timer, contentDescription = null, tint = StudINTheme.colors.accent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(Spacing.xxs))
+            Text(
+                if (remainingMin > 0) "$remainingMin min left in your focus session" else "You're in a focus session",
+                style = MaterialTheme.typography.bodyMedium, color = StudINTheme.colors.textSecondary, textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(Spacing.xl))
+        StudINPrimaryButton("Back to studying", onBack, Modifier.fillMaxWidth(), icon = Icons.AutoMirrored.Rounded.MenuBook)
+        Spacer(Modifier.height(Spacing.xs))
+        StudINSecondaryButton(
+            breakActionLabel(ui.questionCount, ui.passMinutes), onChallenge, Modifier.fillMaxWidth(),
+            icon = if (ui.questionCount > 0) Icons.Rounded.Quiz else Icons.Rounded.SelfImprovement,
         )
-        Spacer(Modifier.height(22.dp))
-        GradientButton("Back to studying", onBack, Modifier.fillMaxWidth(), icon = Icons.Rounded.School)
-        Spacer(Modifier.height(10.dp))
-        val text = if (ui.questionCount > 0)
-            "Answer ${ui.questionCount} quick question${if (ui.questionCount > 1) "s" else ""} for a ${ui.passMinutes}-min break"
-        else "Take a mindful pause for a ${ui.passMinutes}-min break"
-        GhostButton(text, onChallenge, Modifier.fillMaxWidth(), icon = if (ui.questionCount > 0) Icons.Rounded.Quiz else Icons.Rounded.SelfImprovement)
     }
 }
 
 @Composable
 private fun QuizContent(step: GateStep.Quiz, onAnswer: (Int) -> Unit, onNext: () -> Unit) {
     val q: McqQuestion = step.questions[step.index]
+    val c = StudINTheme.colors
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Badge("Question ${step.index + 1} of ${step.questions.size}")
+            StudINBadge("Question ${step.index + 1} of ${step.questions.size}")
             Spacer(Modifier.weight(1f))
-            Text("No penalty for mistakes", style = MaterialTheme.typography.labelSmall, color = Studin.extras.muted)
+            Text("No penalty for mistakes", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
         }
-        Spacer(Modifier.height(14.dp))
-        Text(q.prompt, style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(Spacing.md))
+        Text(q.prompt, style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+        Spacer(Modifier.height(Spacing.md))
         q.options.forEachIndexed { i, opt ->
             val picked = step.picked
-            val color = when {
-                picked == null -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-                i == q.correctIndex -> StudinColors.Mint
-                i == picked -> StudinColors.Coral
-                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-            }
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 5.dp).clip(RoundedCornerShape(14.dp))
-                    .border(1.5.dp, color, RoundedCornerShape(14.dp))
-                    .background(color.copy(alpha = if (picked != null && (i == q.correctIndex || i == picked)) 0.14f else 0f))
-                    .clickable(enabled = picked == null, role = Role.Button) { onAnswer(i) }
-                    .heightIn(min = 52.dp).padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            val isCorrect = picked != null && i == q.correctIndex
+            val isWrongPick = picked != null && i == picked && i != q.correctIndex
+            val status = when { isCorrect -> "Correct answer"; isWrongPick -> "Your answer, incorrect"; else -> null }
+            StudINCard(
+                modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xxs).heightIn(min = 52.dp)
+                    .semantics { if (status != null) contentDescription = "Option ${'A' + i}: $opt. $status" },
+                onClick = { onAnswer(i) },
+                enabled = picked == null,
+                containerColor = when { isCorrect -> c.successContainer; isWrongPick -> MaterialTheme.colorScheme.errorContainer; else -> MaterialTheme.colorScheme.surface },
+                border = BorderStroke(if (isCorrect || isWrongPick) 1.5.dp else 1.dp, when { isCorrect -> c.success; isWrongPick -> MaterialTheme.colorScheme.error; else -> c.border }),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = Spacing.md, vertical = Spacing.sm),
             ) {
-                Text(('A' + i).toString(), fontWeight = FontWeight.Bold, color = color.copy(alpha = 1f))
-                Spacer(Modifier.width(12.dp))
-                Text(opt, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                if (picked != null && i == q.correctIndex) Icon(Icons.Rounded.CheckCircle, "Correct answer", tint = StudinColors.Mint)
-                if (picked != null && i == picked && i != q.correctIndex) Icon(Icons.Rounded.Close, "Your answer", tint = StudinColors.Coral)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("${'A' + i}", style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.width(24.dp))
+                    Text(opt, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    when {
+                        isCorrect -> StatusTag(Icons.Rounded.CheckCircle, "Correct", c.success)
+                        isWrongPick -> StatusTag(Icons.Rounded.Cancel, "Not quite", MaterialTheme.colorScheme.error)
+                    }
+                }
             }
         }
         if (step.picked != null) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Spacing.sm))
             Text(
-                if (step.picked == q.correctIndex) "Nice recall! 🎯" else "Good try – the right answer is highlighted. It'll come back in your reviews.",
-                style = MaterialTheme.typography.bodyMedium, color = Studin.extras.muted,
+                if (step.picked == q.correctIndex) "Nice recall." else "Good try — the right answer is marked. It will come back in your reviews.",
+                style = MaterialTheme.typography.bodyMedium, color = c.textSecondary,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
-            Spacer(Modifier.height(12.dp))
-            GradientButton(if (step.index + 1 < step.questions.size) "Next question" else "Finish", onNext, Modifier.fillMaxWidth())
+            Spacer(Modifier.height(Spacing.md))
+            StudINPrimaryButton(if (step.index + 1 < step.questions.size) "Next question" else "Finish", onNext, Modifier.fillMaxWidth())
         }
     }
 }
 
 @Composable
+private fun StatusTag(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String, color: androidx.compose.ui.graphics.Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(Spacing.xxs))
+        Text(text, style = MaterialTheme.typography.labelMedium, color = color)
+    }
+}
+
+/** Ten-second mindful pause: a simple countdown ring, no looping animation. */
+@Composable
 private fun BreatheContent(secondsLeft: Int) {
-    val t = rememberInfiniteTransition(label = "breathe")
-    val scale by t.animateFloat(0.8f, 1.1f, infiniteRepeatable(tween(2_500), RepeatMode.Reverse), label = "s")
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Breathe in… and out", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(18.dp))
-        ProgressRing((10 - secondsLeft) / 10f, Modifier.scale(scale), size = 160.dp, stroke = 10.dp) {
-            Text("$secondsLeft", style = MonoNumbers.copy(fontSize = MaterialTheme.typography.displaySmall.fontSize))
+        Text("Take a breath", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+        Spacer(Modifier.height(Spacing.lg))
+        StudINProgressRing(secondsLeft / 10f, size = 144.dp, stroke = 10.dp, color = MaterialTheme.colorScheme.primary) {
+            Text("$secondsLeft", style = StudINType.heroValue, modifier = Modifier.semantics { contentDescription = "$secondsLeft seconds" })
         }
-        Spacer(Modifier.height(18.dp))
-        Text("A short pause helps you choose on purpose.", style = MaterialTheme.typography.bodyMedium, color = Studin.extras.muted, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(Spacing.lg))
+        Text("Breathe in slowly, then out. A short pause helps you choose on purpose.",
+            style = MaterialTheme.typography.bodyMedium, color = StudINTheme.colors.textSecondary, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 private fun GrantedContent(step: GateStep.Granted, label: String, onContinue: () -> Unit, onBack: () -> Unit) {
+    val c = StudINTheme.colors
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(72.dp).clip(CircleShape).background(StudinColors.Mint.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.CheckCircle, null, tint = StudinColors.Mint, modifier = Modifier.size(44.dp))
+        Box(Modifier.size(64.dp).background(c.successContainer, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = c.success, modifier = Modifier.size(36.dp))
         }
-        Spacer(Modifier.height(12.dp))
-        Text("${step.minutes}-minute break unlocked", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(Spacing.md))
+        Text("${step.minutes}-minute break unlocked", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { heading(); liveRegion = LiveRegionMode.Polite })
         if (step.total > 0) {
-            Spacer(Modifier.height(6.dp))
-            Text("You got ${step.correct} of ${step.total} right.", color = Studin.extras.muted)
+            Spacer(Modifier.height(Spacing.xxs))
+            Text("You got ${step.correct} of ${step.total} right.", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
         }
-        Spacer(Modifier.height(20.dp))
-        GradientButton("Continue to $label", onContinue, Modifier.fillMaxWidth())
-        Spacer(Modifier.height(10.dp))
-        GhostButton("Actually, back to studying", onBack, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(Spacing.xl))
+        StudINPrimaryButton("Continue to $label", onContinue, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(Spacing.xs))
+        StudINOutlinedButton("Back to studying instead", onBack, Modifier.fillMaxWidth())
     }
 }
