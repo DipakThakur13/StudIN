@@ -3,53 +3,32 @@ package com.studin.app.feature.study
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.DocumentScanner
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -58,25 +37,33 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studin.app.ai.AiEngine
 import com.studin.app.ai.LlmState
-import com.studin.app.core.designsystem.Badge
-import com.studin.app.core.designsystem.GhostButton
-import com.studin.app.core.designsystem.GlassCard
-import com.studin.app.core.designsystem.GradientButton
-import com.studin.app.core.designsystem.IconBubble
-import com.studin.app.core.designsystem.LinearLoading
-import com.studin.app.core.designsystem.Pill
-import com.studin.app.core.designsystem.SectionHeader
-import com.studin.app.core.designsystem.Studin
-import com.studin.app.core.designsystem.StudinColors
+import com.studin.app.core.designsystem.Spacing
+import com.studin.app.core.designsystem.StudINBadge
+import com.studin.app.core.designsystem.StudINCard
+import com.studin.app.core.designsystem.StudINChip
+import com.studin.app.core.designsystem.StudINErrorState
+import com.studin.app.core.designsystem.StudINFilterChip
+import com.studin.app.core.designsystem.StudINIconButton
+import com.studin.app.core.designsystem.StudINIconTile
+import com.studin.app.core.designsystem.StudINLoadingState
+import com.studin.app.core.designsystem.StudINOutlinedButton
+import com.studin.app.core.designsystem.StudINPrimaryButton
+import com.studin.app.core.designsystem.StudINScaffold
+import com.studin.app.core.designsystem.StudINSectionHeader
+import com.studin.app.core.designsystem.StudINTextField
+import com.studin.app.core.designsystem.StudINTheme
+import com.studin.app.core.designsystem.screenContentPadding
+import com.studin.app.core.designsystem.studinContentWidth
 import com.studin.app.ui.navigation.Routes
 
 @Composable
@@ -86,179 +73,171 @@ fun GenerateCardsScreen(deckId: Long?, onNavigate: (String) -> Unit, onBack: () 
     @Suppress("DEPRECATION") val clipboard = LocalClipboardManager.current
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) vm.scan(uri) }
     var editing by remember { mutableStateOf<DraftCard?>(null) }
-    val ex = Studin.extras
+    val drafts = s.drafts
 
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
-        StudyTopBar("AI flashcards", onBack, subtitle = "100% on-device · nothing leaves your phone")
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
-            EngineCard(llm)
-            Spacer(Modifier.height(14.dp))
-            OutlinedTextField(
-                value = s.notes, onValueChange = vm::onNotes,
-                label = { Text("Your notes") },
-                placeholder = { Text("Paste or type notes, e.g. \"Photosynthesis is the process by which…\"") },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 320.dp),
-                supportingText = { Text("${s.notes.length} / ${GenerateCardsViewModel.MAX_NOTES}") },
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GhostButton(
-                    if (s.scanning) "Reading photo…" else "Scan notes photo",
-                    { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                    Modifier.weight(1f), icon = Icons.Rounded.DocumentScanner,
-                )
-                GhostButton("Paste", { clipboard.getText()?.text?.let(vm::appendNotes) }, Modifier.weight(0.6f), icon = Icons.Rounded.ContentPaste)
-            }
-            if (s.scanning) { Spacer(Modifier.height(10.dp)); LinearLoading() }
-
-            AnimatedVisibility(s.error != null) {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(14.dp))
-                        .background(ex.danger.copy(alpha = 0.12f)).padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Rounded.ErrorOutline, null, tint = ex.danger)
-                    Spacer(Modifier.width(8.dp))
-                    Text(s.error ?: "", style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-
-            AnimatedContent(
-                targetState = when { s.generating -> 1; s.drafts != null -> 2; else -> 0 },
-                transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "gen",
-            ) { phase ->
-                when (phase) {
-                    0 -> GradientButton(
-                        "Generate flashcards", vm::generate, Modifier.fillMaxWidth(),
-                        icon = Icons.Rounded.AutoAwesome, enabled = s.notes.isNotBlank() && !s.scanning,
+    StudINScaffold(
+        title = "AI flashcards", subtitle = "Generated on your phone – notes never leave it", onBack = onBack,
+        bottomBar = {
+            BottomActionBar {
+                if (drafts == null) {
+                    StudINPrimaryButton(
+                        if (s.generating) "Generating…" else "Generate flashcards", vm::generate, Modifier.fillMaxWidth(),
+                        icon = Icons.Rounded.AutoAwesome, enabled = s.notes.isNotBlank() && !s.scanning, loading = s.generating,
                     )
-                    1 -> ShimmerPlaceholder()
-                    else -> Drafts(s, vm, onEdit = { editing = it })
+                } else {
+                    StudINOutlinedButton("Discard", vm::discard, Modifier.weight(1f))
+                    StudINPrimaryButton(
+                        "Save ${s.selectedCount} card${if (s.selectedCount == 1) "" else "s"}",
+                        { vm.save { id -> onNavigate(Routes.deck(id)) } }, Modifier.weight(1.6f),
+                        icon = Icons.Rounded.Save, enabled = s.selectedCount > 0 && (s.targetDeckId != null || s.newDeckTitle.isNotBlank()), loading = s.saving,
+                    )
                 }
             }
-            Spacer(Modifier.height(24.dp))
-        }
-        if (s.drafts?.isNotEmpty() == true) {
-            GradientButton(
-                if (s.saving) "Saving…" else "Save ${s.selectedCount} card${if (s.selectedCount == 1) "" else "s"}",
-                onClick = { vm.save { id -> onNavigate(Routes.deck(id)) } },
-                enabled = !s.saving && s.selectedCount > 0 && (s.targetDeckId != null || s.newDeckTitle.isNotBlank()),
-                icon = Icons.Rounded.Save,
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().studinContentWidth(),
+            contentPadding = screenContentPadding(padding),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            item(key = "engine") { EngineCard(llm, s.engine) }
+            if (drafts == null) {
+                item(key = "notes") {
+                    StudINTextField(
+                        value = s.notes, onValueChange = vm::onNotes, label = "Your notes",
+                        placeholder = "Paste or type notes – definitions, formulas and key facts work best.",
+                        singleLine = false, minLines = 6, maxLines = 14,
+                        supportingText = "${s.notes.length} / ${GenerateCardsViewModel.MAX_NOTES}",
+                    )
+                }
+                item(key = "inputs") {
+                    AdaptiveButtonGroup(
+                        { m ->
+                            StudINOutlinedButton(
+                                if (s.scanning) "Reading photo…" else "Scan notes photo",
+                                { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                                m, icon = Icons.Rounded.DocumentScanner, enabled = !s.scanning,
+                            )
+                        },
+                        { m -> StudINOutlinedButton("Paste", { clipboard.getText()?.text?.let(vm::appendNotes) }, m, icon = Icons.Rounded.ContentPaste) },
+                    )
+                }
+                if (s.scanning) item(key = "scanning") { StudINLoadingState(message = "Recognising text on your phone…") }
+                if (s.generating) item(key = "generating") { StudINLoadingState(message = "Finding definitions, formulas and key facts…") }
+                s.error?.let { e -> item(key = "error") { StudINErrorState(e) } }
+                item(key = "tips") {
+                    Text(
+                        "Tip: sentences like \"Mitochondria is the powerhouse of the cell\" or \"F = ma\" become clean question–answer cards.",
+                        style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
+                    )
+                }
+            } else {
+                s.error?.let { e -> item(key = "error") { StudINErrorState(e) } }
+                if (s.keywords.isNotEmpty()) {
+                    item(key = "keywords") {
+                        Column {
+                            Text("Key terms found", style = MaterialTheme.typography.titleSmall, color = StudINTheme.colors.textSecondary)
+                            Spacer(Modifier.height(Spacing.xs))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                                s.keywords.forEach { StudINChip(it) }
+                            }
+                        }
+                    }
+                }
+                item(key = "drafts-header") {
+                    StudINSectionHeader(
+                        "Draft cards", Modifier.padding(top = Spacing.xs),
+                        supporting = "${s.selectedCount} of ${drafts.size} selected · tap the pencil to edit",
+                    )
+                }
+                items(drafts, key = { it.key }) { d -> DraftRow(d, onToggle = { vm.toggle(d.key) }, onEdit = { editing = d }) }
+                item(key = "target") { TargetDeckPicker(s, vm::selectDeck, vm::onNewDeckTitle) }
+            }
         }
     }
 
     editing?.let { d ->
         TextInputDialog(
-            "Edit card", "Front (question)", "Save", initialFirst = d.front, secondLabel = "Back (answer)", initialSecond = d.back,
-            singleLine = false, onDismiss = { editing = null },
-            onConfirm = { f, b -> vm.edit(d.key, f, b); editing = null },
+            title = "Edit card", firstLabel = "Front (question)", secondLabel = "Back (answer)", confirmText = "Save", singleLine = false,
+            initialFirst = d.front, initialSecond = d.back,
+            onDismiss = { editing = null }, onConfirm = { f, b -> vm.edit(d.key, f, b); editing = null },
         )
     }
 }
 
+/** Honest description of which on-device engine is available / was used. */
 @Composable
-private fun EngineCard(llm: LlmState) {
-    val ex = Studin.extras
-    val (title, body, accent) = when (llm) {
-        is LlmState.Ready, is LlmState.Installed, is LlmState.Loading ->
-            Triple("On-device LLM ready", "Your imported model writes the cards. Falls back to Lite AI if it can't.", StudinColors.Violet)
-        else -> Triple(
-            "StudIN Lite AI",
-            "Finds definitions, formulas and key facts in your notes. Import a model in AI Tutor for richer questions.",
-            StudinColors.Mint,
-        )
+private fun EngineCard(llm: LlmState, used: AiEngine?) {
+    val c = StudINTheme.colors
+    val (title, body) = when {
+        used == AiEngine.LLM -> "On-device model" to "These cards were drafted by the model you imported. Check them before saving."
+        used == AiEngine.LITE -> "StudIN Lite AI" to "These cards were extracted from definitions, formulas and key facts in your notes. Check them before saving."
+        llm is LlmState.Ready -> "On-device model ready" to "Your imported model (${llm.name}) drafts the cards. StudIN Lite AI is the automatic fallback."
+        llm is LlmState.Installed -> "On-device model installed" to "Your imported model (${llm.name}) loads when you generate (if enabled in AI Tutor). Lite AI is the fallback."
+        llm is LlmState.Loading -> "Loading on-device model…" to "Lite AI is used if the model isn't ready."
+        else -> "StudIN Lite AI" to "Finds definitions, formulas and key facts in your notes. Import a model in AI Tutor → Model for richer questions."
     }
-    GlassCard(Modifier.fillMaxWidth(), highlight = true) {
+    val usesModel = used == AiEngine.LLM || (used == null && (llm is LlmState.Ready || llm is LlmState.Installed))
+    StudINCard(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconBubble(Icons.Rounded.AutoAwesome, accent)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                Text(body, style = MaterialTheme.typography.bodySmall, color = ex.muted)
-            }
+            StudINIconTile(if (usesModel) Icons.Rounded.Memory else Icons.Rounded.AutoAwesome, c.ai, 40.dp)
+            Spacer(Modifier.width(Spacing.sm))
+            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            StudINBadge(if (usesModel) "On-device LLM" else "Lite", container = c.aiContainer, content = c.ai)
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Spacing.xs))
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+        Spacer(Modifier.height(Spacing.xs))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Lock, null, tint = ex.success, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Private: works offline, notes are never uploaded", style = MaterialTheme.typography.labelSmall, color = ex.muted)
+            Icon(Icons.Rounded.Lock, contentDescription = null, tint = c.success, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(Spacing.xxs))
+            Text("Works offline · notes are never uploaded", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
         }
     }
 }
 
 @Composable
-private fun ShimmerPlaceholder() {
-    val t = rememberInfiniteTransition(label = "shimmer")
-    val x by t.animateFloat(-400f, 1200f, infiniteRepeatable(tween(1300, easing = LinearEasing), RepeatMode.Restart), label = "x")
-    val base = Studin.extras.glass
-    val brush = Brush.linearGradient(
-        listOf(base, StudinColors.Mint.copy(alpha = 0.22f), base),
-        start = androidx.compose.ui.geometry.Offset(x, 0f), end = androidx.compose.ui.geometry.Offset(x + 400f, 200f),
-    )
-    Column(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.width(8.dp))
-            Text("Reading your notes and writing questions…", style = MaterialTheme.typography.titleSmall)
-        }
-        Spacer(Modifier.height(12.dp))
-        repeat(4) {
-            Box(Modifier.fillMaxWidth().height(78.dp).clip(RoundedCornerShape(18.dp)).background(brush))
-            Spacer(Modifier.height(10.dp))
+private fun DraftRow(d: DraftCard, onToggle: () -> Unit, onEdit: () -> Unit) {
+    val c = StudINTheme.colors
+    StudINCard(
+        Modifier.fillMaxWidth(),
+        onClick = onToggle, onClickLabel = if (d.selected) "Exclude card" else "Include card",
+        containerColor = if (d.selected) MaterialTheme.colorScheme.surface else c.surfaceSecondary,
+        contentPadding = PaddingValues(start = Spacing.xxs, end = Spacing.xxs, top = Spacing.xs, bottom = Spacing.xs),
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            Checkbox(
+                checked = d.selected, onCheckedChange = { onToggle() },
+                colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
+                modifier = Modifier.semantics {
+                    contentDescription = "Include card: ${d.front}"
+                    stateDescription = if (d.selected) "Included" else "Excluded"
+                },
+            )
+            Column(Modifier.weight(1f).padding(top = Spacing.sm, bottom = Spacing.xs)) {
+                Text(d.front, style = MaterialTheme.typography.titleMedium, maxLines = 4, overflow = TextOverflow.Ellipsis,
+                    color = if (d.selected) MaterialTheme.colorScheme.onSurface else c.textSecondary)
+                Spacer(Modifier.height(Spacing.xxs))
+                Text(d.back, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, maxLines = 4, overflow = TextOverflow.Ellipsis)
+            }
+            StudINIconButton(Icons.Rounded.Edit, "Edit card", onEdit)
         }
     }
 }
 
 @Composable
-private fun Drafts(s: GenerateUiState, vm: GenerateCardsViewModel, onEdit: (DraftCard) -> Unit) {
-    val ex = Studin.extras
-    val drafts = s.drafts.orEmpty()
-    Column(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("${drafts.size} cards", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            s.engine?.let { Badge(it.label, if (it == AiEngine.LLM) StudinColors.Violet else StudinColors.Mint) }
-            IconButton(onClick = vm::generate) { Icon(Icons.Rounded.Refresh, contentDescription = "Regenerate") }
+private fun TargetDeckPicker(s: GenerateUiState, onSelect: (Long?) -> Unit, onTitle: (String) -> Unit) {
+    StudINCard(Modifier.fillMaxWidth().padding(top = Spacing.xs)) {
+        Text("Save to", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(Spacing.xs))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            StudINFilterChip("New deck", selected = s.targetDeckId == null, onClick = { onSelect(null) })
+            s.decks.forEach { d -> StudINFilterChip(d.title.take(32), selected = s.targetDeckId == d.id, onClick = { onSelect(d.id) }) }
         }
-        if (s.keywords.isNotEmpty()) {
-            Spacer(Modifier.height(6.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                s.keywords.forEach { Badge(it, StudinColors.Cyan) }
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        drafts.forEach { d ->
-            GlassCard(Modifier.fillMaxWidth().padding(bottom = 10.dp), onClick = { vm.toggle(d.key) }, contentPadding = 12.dp, highlight = d.selected) {
-                Row(verticalAlignment = Alignment.Top) {
-                    Checkbox(
-                        checked = d.selected, onCheckedChange = { vm.toggle(d.key) },
-                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
-                    )
-                    Column(Modifier.weight(1f).padding(top = 10.dp)) {
-                        Text(d.front, style = MaterialTheme.typography.titleSmall, maxLines = 3, overflow = TextOverflow.Ellipsis,
-                            color = if (d.selected) MaterialTheme.colorScheme.onSurface else ex.muted)
-                        Spacer(Modifier.height(4.dp))
-                        Text(d.back, style = MaterialTheme.typography.bodySmall, color = ex.muted, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                    }
-                    IconButton(onClick = { onEdit(d) }) { Icon(Icons.Rounded.Edit, contentDescription = "Edit card", tint = ex.muted) }
-                }
-            }
-        }
-        if (drafts.isNotEmpty()) {
-            SectionHeader("Save to")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Pill("New deck", s.targetDeckId == null, { vm.selectDeck(null) }, icon = Icons.Rounded.Add)
-                s.decks.forEach { deck -> Pill(deck.title.take(28), s.targetDeckId == deck.id, { vm.selectDeck(deck.id) }) }
-            }
-            AnimatedVisibility(s.targetDeckId == null) {
-                OutlinedTextField(
-                    value = s.newDeckTitle, onValueChange = vm::onNewDeckTitle, label = { Text("New deck title") },
-                    singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            GhostButton("Discard and edit notes", vm::discard, Modifier.fillMaxWidth(), color = ex.muted)
+        if (s.targetDeckId == null) {
+            Spacer(Modifier.height(Spacing.sm))
+            StudINTextField(s.newDeckTitle, onTitle, label = "New deck name", placeholder = "e.g. Thermodynamics notes")
         }
     }
 }
+

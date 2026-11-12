@@ -1,22 +1,12 @@
 package com.studin.app.feature.study
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,18 +16,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Spa
-import androidx.compose.material.icons.rounded.TouchApp
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,29 +32,34 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.studin.app.R
 import com.studin.app.core.data.db.CardEntity
 import com.studin.app.core.data.repo.schedule
-import com.studin.app.core.designsystem.EmptyState
-import com.studin.app.core.designsystem.GhostButton
-import com.studin.app.core.designsystem.GradientButton
-import com.studin.app.core.designsystem.GradientProgressBar
-import com.studin.app.core.designsystem.ProgressRing
-import com.studin.app.core.designsystem.Studin
-import com.studin.app.core.designsystem.StudinColors
+import com.studin.app.core.designsystem.Motion
+import com.studin.app.core.designsystem.Spacing
+import com.studin.app.core.designsystem.StudINCard
+import com.studin.app.core.designsystem.StudINEmptyState
+import com.studin.app.core.designsystem.StudINFlashcard
+import com.studin.app.core.designsystem.StudINLinearProgress
+import com.studin.app.core.designsystem.StudINLoadingState
+import com.studin.app.core.designsystem.StudINOutlinedButton
+import com.studin.app.core.designsystem.StudINPrimaryButton
+import com.studin.app.core.designsystem.StudINProgressRing
+import com.studin.app.core.designsystem.StudINScaffold
+import com.studin.app.core.designsystem.StudINShapes
+import com.studin.app.core.designsystem.StudINTheme
+import com.studin.app.core.designsystem.StudINType
+import com.studin.app.core.designsystem.motionDuration
+import com.studin.app.core.designsystem.studinContentWidth
 import com.studin.domain.model.Grade
 import com.studin.domain.srs.Sm2Scheduler
 
@@ -77,201 +68,144 @@ fun ReviewScreen(deckId: Long?, onBack: () -> Unit, vm: ReviewViewModel = hiltVi
     val s by vm.state.collectAsStateWithLifecycle()
     val haptics by vm.haptics.collectAsStateWithLifecycle()
     val hf = LocalHapticFeedback.current
+    val total = s.queue.size.coerceAtLeast(1)
+    val position = (s.index + 1).coerceAtMost(s.queue.size)
 
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-        StudyTopBar(
-            title = "Review",
-            subtitle = if (s.loading || s.empty) null else "${minOf(s.index + 1, s.queue.size)} / ${s.queue.size}",
-            onBack = onBack,
-        )
-        when {
-            s.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
-            s.empty -> CaughtUp(onBack)
-            s.finished -> ReviewSummary(s, onBack, onAgain = vm::load)
-            else -> {
-                GradientProgressBar(
-                    if (s.queue.isEmpty()) 0f else s.index.toFloat() / s.queue.size,
-                    Modifier.padding(horizontal = 20.dp),
-                )
-                Spacer(Modifier.height(16.dp))
-                AnimatedContent(
-                    targetState = s.index,
-                    transitionSpec = {
-                        (slideInHorizontally(tween(320)) { it } + fadeIn()) togetherWith (slideOutHorizontally(tween(260)) { -it / 2 } + fadeOut())
-                    },
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    label = "card",
-                ) { idx ->
-                    val card = s.queue.getOrNull(idx)
-                    if (card != null) {
-                        FlipCard(
-                            card = card,
-                            revealed = s.revealed && idx == s.index,
-                            onReveal = vm::reveal,
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-                        )
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
-                val card = s.current
-                Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).heightIn(min = 72.dp)) {
-                    AnimatedContent(s.revealed, label = "actions", transitionSpec = {
-                        (slideInVertically { it / 2 } + fadeIn()) togetherWith (slideOutVertically { it / 2 } + fadeOut())
-                    }) { revealed ->
-                        if (!revealed || card == null) {
-                            GradientButton("Show answer", vm::reveal, Modifier.fillMaxWidth(), icon = Icons.Rounded.TouchApp)
-                        } else {
-                            GradeButtons(card) { g ->
-                                if (haptics) hf.performHapticFeedback(
-                                    if (g == Grade.AGAIN) HapticFeedbackType.LongPress else HapticFeedbackType.TextHandleMove
-                                )
-                                vm.grade(g)
-                            }
+    StudINScaffold(
+        title = "Review",
+        subtitle = when {
+            s.loading -> null
+            s.empty -> if (deckId != null) "This deck" else "All decks"
+            s.finished -> "Session complete"
+            else -> "$position of ${s.queue.size}" + if (s.queue.size > s.initialCount) " · includes repeats" else ""
+        },
+        onBack = onBack,
+        bottomBar = {
+            val card = s.current
+            if (!s.loading && !s.finished && card != null) {
+                BottomActionBar {
+                    if (!s.revealed) {
+                        StudINPrimaryButton("Show answer", vm::reveal, Modifier.fillMaxWidth(), icon = Icons.Rounded.Visibility)
+                    } else {
+                        GradeButtons(card, enabled = !s.busy) { g ->
+                            if (haptics) hf.performHapticFeedback(if (g == Grade.AGAIN) HapticFeedbackType.LongPress else HapticFeedbackType.TextHandleMove)
+                            vm.grade(g)
                         }
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun FlipCard(card: CardEntity, revealed: Boolean, onReveal: () -> Unit, modifier: Modifier = Modifier) {
-    val rotation by animateFloatAsState(
-        if (revealed) 180f else 0f, spring(dampingRatio = 0.72f, stiffness = 220f), label = "flip",
-    )
-    val showBack = rotation > 90f
-    val ex = Studin.extras
-    Surface(
-        modifier = modifier
-            .graphicsLayer {
-                rotationY = rotation
-                cameraDistance = 14f * density
-            }
-            .clip(RoundedCornerShape(28.dp))
-            .clickable(remember { MutableInteractionSource() }, null, enabled = !revealed, role = Role.Button, onClick = onReveal)
-            .semantics { contentDescription = if (showBack) "Answer: ${card.back}" else "Question: ${card.front}. Tap to reveal answer" },
-        shape = RoundedCornerShape(28.dp),
-        color = ex.glass,
-        border = BorderStroke(
-            1.2.dp,
-            if (showBack) Brush.linearGradient(listOf(StudinColors.Mint, StudinColors.Cyan))
-            else Brush.linearGradient(listOf(ex.glassBorder, ex.glassBorder)),
-        ),
-    ) {
-        Box(
-            Modifier.fillMaxSize()
-                .graphicsLayer { if (showBack) rotationY = 180f }
-                .background(
-                    if (showBack) Brush.verticalGradient(listOf(StudinColors.Mint.copy(alpha = 0.10f), Color.Transparent))
-                    else Brush.verticalGradient(listOf(StudinColors.Violet.copy(alpha = 0.08f), Color.Transparent))
-                )
-                .padding(24.dp),
-        ) {
-            Text(
-                if (showBack) "ANSWER" else "QUESTION",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (showBack) MaterialTheme.colorScheme.primary else ex.muted,
-                modifier = Modifier.align(Alignment.TopStart),
-            )
-            Column(
-                Modifier.align(Alignment.Center).fillMaxWidth().verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                if (showBack) {
-                    Text(card.front, style = MaterialTheme.typography.bodyMedium, color = ex.muted, textAlign = TextAlign.Center)
-                    Spacer(Modifier.height(16.dp))
-                    Text(card.back, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
-                } else {
-                    Text(card.front, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+        },
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            when {
+                s.loading -> StudINLoadingState(Modifier.align(Alignment.Center), message = "Loading due cards…")
+                s.empty -> Column(Modifier.fillMaxSize().studinContentWidth().verticalScroll(rememberScrollState()).padding(horizontal = Spacing.screen)) {
+                    StudINEmptyState(
+                        title = "All caught up", message = "No cards are due right now. Spaced repetition will bring them back at the right time.",
+                        illustration = R.drawable.ill_recall, actionLabel = "Back to Study", onAction = onBack,
+                    )
+                }
+                s.finished -> ReviewSummaryContent(reviewSummary(s.counts), onAgain = vm::load, onDone = onBack)
+                else -> Column(
+                    Modifier.fillMaxSize().studinContentWidth().verticalScroll(rememberScrollState())
+                        .padding(horizontal = Spacing.screen, vertical = Spacing.xs),
+                ) {
+                    StudINLinearProgress(s.index / total.toFloat(), height = 6.dp, label = "Card $position of ${s.queue.size}")
+                    Spacer(Modifier.height(Spacing.md))
+                    val card = s.current
+                    if (card != null) {
+                        val inMs = motionDuration(Motion.card)
+                        val outMs = motionDuration(Motion.small)
+                        AnimatedContent(
+                            targetState = card.id to s.index,
+                            transitionSpec = { fadeIn(tween(inMs)) togetherWith fadeOut(tween(outMs)) },
+                            label = "card",
+                        ) { (id, _) ->
+                            val c = s.queue.firstOrNull { it.id == id } ?: card
+                            StudINFlashcard(
+                                front = c.front, back = c.back, revealed = s.revealed,
+                                onFlip = { if (!s.revealed) vm.reveal() },
+                                modifier = Modifier.heightIn(min = 280.dp),
+                            )
+                        }
+                        Spacer(Modifier.height(Spacing.sm))
+                        Text(
+                            if (s.revealed) "How well did you remember it? Your answer schedules the next review."
+                            else "Try to recall the answer before revealing it.",
+                            style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
+                            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
-            if (!showBack) Text(
-                "Tap to flip", style = MaterialTheme.typography.labelMedium, color = ex.muted,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
         }
     }
 }
 
 @Composable
-private fun GradeButtons(card: CardEntity, onGrade: (Grade) -> Unit) {
+private fun androidx.compose.foundation.layout.RowScope.GradeButtons(card: CardEntity, enabled: Boolean, onGrade: (Grade) -> Unit) {
     val now = remember(card.id) { System.currentTimeMillis() }
-    val ex = Studin.extras
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Grade.entries.forEach { g ->
-            val color = when (g) { Grade.AGAIN -> ex.danger; Grade.HARD -> ex.warning; Grade.GOOD -> StudinColors.Mint; Grade.EASY -> StudinColors.Cyan }
-            val preview = remember(card.id, g) { Sm2Scheduler.formatInterval(card.schedule(), g, now) }
-            Surface(
-                onClick = { onGrade(g) },
-                modifier = Modifier.weight(1f).heightIn(min = 64.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = color.copy(alpha = 0.16f),
-                border = BorderStroke(1.dp, color.copy(alpha = 0.5f)),
-            ) {
-                Column(Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Text(g.label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
-                    Text(preview, style = MaterialTheme.typography.labelSmall, color = ex.muted)
-                }
+    val c = StudINTheme.colors
+    Grade.entries.forEach { g ->
+        val preview = remember(card.id, g) { Sm2Scheduler.formatInterval(card.schedule(), g, now) }
+        val tone = when (g) {
+            Grade.AGAIN -> MaterialTheme.colorScheme.error
+            Grade.HARD -> c.warning
+            Grade.GOOD -> MaterialTheme.colorScheme.primary
+            Grade.EASY -> c.success
+        }
+        Surface(
+            onClick = { onGrade(g) }, enabled = enabled,
+            modifier = Modifier.weight(1f).heightIn(min = 56.dp).semantics { contentDescription = "${g.label}, next review in $preview" },
+            shape = StudINShapes.button, color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, c.border),
+        ) {
+            Column(Modifier.padding(vertical = Spacing.xs, horizontal = Spacing.xxs), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Text(g.label, style = MaterialTheme.typography.labelLarge, color = tone, maxLines = 1)
+                Text(preview, style = MaterialTheme.typography.bodySmall, color = c.textSecondary, maxLines = 1)
             }
         }
     }
 }
 
 @Composable
-private fun ReviewSummary(s: ReviewUiState, onDone: () -> Unit, onAgain: () -> Unit) {
-    val ex = Studin.extras
-    val total = s.reviewed.coerceAtLeast(1)
-    val recalled = (s.counts[Grade.GOOD] ?: 0) + (s.counts[Grade.EASY] ?: 0) + (s.counts[Grade.HARD] ?: 0)
+private fun ReviewSummaryContent(summary: ReviewSummary, onAgain: () -> Unit, onDone: () -> Unit) {
+    val c = StudINTheme.colors
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+        Modifier.fillMaxSize().studinContentWidth().verticalScroll(rememberScrollState()).padding(horizontal = Spacing.screen, vertical = Spacing.md),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(12.dp))
-        AnimatedVisibility(true, enter = scaleIn() + fadeIn()) {
-            ProgressRing(recalled.toFloat() / total, size = 200.dp) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${recalled * 100 / total}%", style = MaterialTheme.typography.displaySmall)
-                    Text("recalled", style = MaterialTheme.typography.labelMedium, color = ex.muted)
-                }
+        StudINProgressRing(summary.recallRate, size = 148.dp, stroke = 12.dp, color = c.success) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("${summary.recallPercent}%", style = StudINType.heroValue)
+                Text("recalled", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Spacing.md))
         Text("Session complete", style = MaterialTheme.typography.headlineSmall)
-        Text("${s.reviewed} reviews · scheduled with spaced repetition", style = MaterialTheme.typography.bodyMedium, color = ex.muted)
-        Spacer(Modifier.height(20.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Grade.entries.forEach { g ->
-                val color = when (g) { Grade.AGAIN -> ex.danger; Grade.HARD -> ex.warning; Grade.GOOD -> StudinColors.Mint; Grade.EASY -> StudinColors.Cyan }
-                Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(color.copy(alpha = 0.12f)).padding(vertical = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text("${s.counts[g] ?: 0}", style = MaterialTheme.typography.titleLarge, color = color)
-                    Text(g.label, style = MaterialTheme.typography.labelSmall, color = ex.muted)
-                }
-            }
+        Text(
+            "You reviewed ${summary.total} card${if (summary.total == 1) "" else "s"}. Cards marked Again will come back soon.",
+            style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(Spacing.lg))
+        StudINCard(Modifier.fillMaxWidth()) {
+            GradeCountRow("Again", summary.again, MaterialTheme.colorScheme.error)
+            GradeCountRow("Hard", summary.hard, c.warning)
+            GradeCountRow("Good", summary.good, MaterialTheme.colorScheme.primary)
+            GradeCountRow("Easy", summary.easy, c.success)
         }
-        Spacer(Modifier.height(28.dp))
-        GradientButton("Done", onDone, Modifier.fillMaxWidth())
-        Spacer(Modifier.height(10.dp))
-        GhostButton("Check for more due cards", onAgain, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(Spacing.lg))
+        StudINPrimaryButton("Done", onDone, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(Spacing.xs))
+        StudINOutlinedButton("Check for more due cards", onAgain, Modifier.fillMaxWidth())
     }
 }
 
 @Composable
-private fun CaughtUp(onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        EmptyState(
-            Icons.Rounded.Spa, "All caught up",
-            "No cards are due right now. Your memory is doing its work – come back later, or keep the momentum with a quiz.",
-        )
-        Box(Modifier.size(1.dp))
-        GhostButton("Back to Study", onBack, Modifier.fillMaxWidth(0.8f))
-        Spacer(Modifier.height(10.dp))
-        Text(
-            "Tip: tap Quiz or Generate on the Study tab to practise more.",
-            style = MaterialTheme.typography.bodySmall, color = Studin.extras.muted, textAlign = TextAlign.Center,
-        )
+private fun GradeCountRow(label: String, count: Int, tone: Color) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(10.dp).background(tone, CircleShape))
+        Spacer(Modifier.width(Spacing.sm))
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text("$count", style = MaterialTheme.typography.titleMedium)
     }
 }

@@ -316,6 +316,7 @@ fun StudINFlashcard(front: String, back: String, revealed: Boolean, onFlip: () -
         Column(
             Modifier.graphicsLayer { rotationY = if (showBack) 180f else 0f }.padding(Spacing.xl),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
             StudINBadge(if (showBack) "Answer" else label, container = if (showBack) StudINTheme.colors.successContainer else StudINTheme.colors.surfaceSecondary,
                 content = if (showBack) StudINTheme.colors.success else StudINTheme.colors.textSecondary)
