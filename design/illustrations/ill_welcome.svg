@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" width="320" height="240">
+  <defs>
+    <linearGradient id="scr" x1="120" y1="40" x2="200" y2="210" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#355846"/><stop offset="1" stop-color="#1F3A2C"/>
+    </linearGradient>
+  </defs>
+  <!-- ground shadow -->
+  <ellipse cx="160" cy="214" rx="122" ry="9" fill="#243F32" opacity="0.10"/>
+  <!-- book stack (left) -->
+  <rect x="40" y="186" width="78" height="16" rx="3" fill="#243F32"/>
+  <rect x="44" y="190" width="70" height="3" rx="1.5" fill="#FAFAF7" opacity="0.55"/>
+  <rect x="46" y="170" width="70" height="16" rx="3" fill="#E66B38"/>
+  <rect x="50" y="174" width="62" height="3" rx="1.5" fill="#FFF0E7" opacity="0.8"/>
+  <rect x="38" y="154" width="74" height="16" rx="3" fill="#7865A5"/>
+  <rect x="42" y="158" width="66" height="3" rx="1.5" fill="#EDE9F5" opacity="0.8"/>
+  <!-- mug -->
+  <path d="M60 128 h30 v20 a8 8 0 0 1 -8 8 h-14 a8 8 0 0 1 -8 -8 Z" fill="#FFFFFF" stroke="#E5E8E1" stroke-width="2"/>
+  <path d="M90 134 a7 7 0 0 1 0 14" fill="none" stroke="#E5E8E1" stroke-width="3"/>
+  <path d="M68 118 c-4 -5 4 -8 0 -13" fill="none" stroke="#B9C4BB" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M80 118 c-4 -5 4 -8 0 -13" fill="none" stroke="#B9C4BB" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- phone -->
+  <rect x="116" y="34" width="92" height="176" rx="18" fill="#202823"/>
+  <rect x="121" y="39" width="82" height="166" rx="14" fill="url(#scr)"/>
+  <rect x="148" y="44" width="28" height="5" rx="2.5" fill="#202823"/>
+  <!-- ring on screen -->
+  <circle cx="162" cy="104" r="30" fill="none" stroke="#FAFAF7" stroke-opacity="0.16" stroke-width="7"/>
+  <path d="M162 74 A30 30 0 1 1 132.6 110" fill="none" stroke="#E66B38" stroke-width="7" stroke-linecap="round"/>
+  <rect x="150" y="98" width="24" height="5" rx="2.5" fill="#FAFAF7"/>
+  <rect x="154" y="107" width="16" height="3.5" rx="1.75" fill="#FAFAF7" opacity="0.55"/>
+  <!-- list rows on screen -->
+  <rect x="131" y="148" width="62" height="14" rx="5" fill="#FAFAF7" opacity="0.14"/>
+  <circle cx="139" cy="155" r="3.4" fill="#F3A16D"/>
+  <rect x="146" y="153" width="38" height="4" rx="2" fill="#FAFAF7" opacity="0.7"/>
+  <rect x="131" y="167" width="62" height="14" rx="5" fill="#FAFAF7" opacity="0.14"/>
+  <circle cx="139" cy="174" r="3.4" fill="#B4DEC0"/>
+  <rect x="146" y="172" width="30" height="4" rx="2" fill="#FAFAF7" opacity="0.7"/>
+  <!-- plant (right) -->
+  <path d="M236 202 h40 l-5 -30 h-30 Z" fill="#E66B38"/>
+  <rect x="238" y="168" width="36" height="7" rx="3" fill="#C9572B"/>
+  <path d="M256 168 C252 146 238 136 226 134 C230 150 240 160 256 168 Z" fill="#355846"/>
+  <path d="M256 168 C258 140 270 126 284 122 C282 142 272 158 256 168 Z" fill="#287A55"/>
+  <path d="M256 168 C254 150 256 126 262 110 C268 128 266 150 256 168 Z" fill="#243F32"/>
+  <!-- sparkles -->
+  <path d="M228 60 l3.5 9 9 3.5 -9 3.5 -3.5 9 -3.5 -9 -9 -3.5 9 -3.5 Z" fill="#E66B38"/>
+  <path d="M256 92 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 Z" fill="#F3A16D"/>
+  <path d="M86 70 l2.6 6.4 6.4 2.6 -6.4 2.6 -2.6 6.4 -2.6 -6.4 -6.4 -2.6 6.4 -2.6 Z" fill="#7865A5"/>
+  <circle cx="104" cy="44" r="4" fill="#B4DEC0"/>
+  <circle cx="244" cy="34" r="3" fill="#7865A5" opacity="0.6"/>
+</svg>

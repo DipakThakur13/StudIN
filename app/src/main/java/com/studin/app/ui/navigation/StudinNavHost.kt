@@ -1,46 +1,31 @@
 package com.studin.app.ui.navigation
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -48,9 +33,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
-import com.studin.app.core.designsystem.GradientBackground
-import com.studin.app.core.designsystem.Studin
-import com.studin.app.core.designsystem.StudinColors
+import com.studin.app.core.designsystem.Motion
+import com.studin.app.core.designsystem.StudINLogo
+import com.studin.app.core.designsystem.StudINTheme
+import com.studin.app.core.designsystem.motionDuration
 import com.studin.app.feature.ai.AiScreen
 import com.studin.app.feature.focus.FocusScreen
 import com.studin.app.feature.focus.RulesScreen
@@ -67,26 +53,47 @@ import com.studin.app.feature.study.QuizScreen
 import com.studin.app.feature.study.ReviewScreen
 import com.studin.app.feature.study.StudyScreen
 
+/** Width at which the navigation bar becomes a navigation rail (Material window-size "medium"). */
+private const val RAIL_MIN_WIDTH_DP = 600
+
+/**
+ * App shell: Material 3 Scaffold with a standard NavigationBar on compact widths and a
+ * NavigationRail on medium/expanded widths. The bar is part of the layout (never an overlay),
+ * and its insets are consumed before screens apply their own, so nothing is padded twice.
+ */
 @Composable
 fun StudinNavHost(nav: NavHostController, startDestination: String) {
     val entry by nav.currentBackStackEntryAsState()
-    val route = entry?.destination?.route
-    val showBar = TopLevel.entries.any { it.route == route }
+    val destination = entry?.destination
+    val showNav = destination?.route in Routes.TOP_LEVEL
+    val useRail = LocalConfiguration.current.screenWidthDp >= RAIL_MIN_WIDTH_DP
     val navigate: (String) -> Unit = { r ->
-        if (TopLevel.entries.any { it.route == r }) nav.navigateTopLevel(r) else nav.navigate(r) { launchSingleTop = true }
+        if (r in Routes.TOP_LEVEL) nav.navigateTopLevel(r) else nav.navigate(r) { launchSingleTop = true }
     }
     val back: () -> Unit = { if (!nav.popBackStack()) nav.navigateTopLevel(Routes.HOME) }
+    val isSelected: (TopLevel) -> Boolean = { item -> destination?.hierarchy?.any { it.route == item.route } == true }
+    val enterMs = motionDuration(Motion.screen)
+    val exitMs = motionDuration(Motion.small)
+    val select: (TopLevel) -> Unit = { item -> if (!isSelected(item)) nav.navigateTopLevel(item.route) }
 
-    GradientBackground {
-        Box(Modifier.fillMaxSize()) {
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0),
+        bottomBar = { if (showNav && !useRail) StudinNavigationBar(isSelected, select) },
+    ) { inner ->
+        Row(Modifier.fillMaxSize().padding(inner).consumeWindowInsets(inner)) {
+            if (showNav && useRail) {
+                StudinNavigationRail(isSelected, select)
+                VerticalDivider(color = StudINTheme.colors.border)
+            }
             NavHost(
                 navController = nav,
                 startDestination = startDestination,
-                modifier = Modifier.fillMaxSize(),
-                enterTransition = { fadeIn(tween(260)) + slideInHorizontally(tween(320)) { it / 12 } },
-                exitTransition = { fadeOut(tween(200)) },
-                popEnterTransition = { fadeIn(tween(260)) },
-                popExitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(320)) { it / 12 } },
+                modifier = Modifier.weight(1f).fillMaxSize(),
+                enterTransition = { fadeIn(tween(enterMs)) },
+                exitTransition = { fadeOut(tween(exitMs)) },
+                popEnterTransition = { fadeIn(tween(enterMs)) },
+                popExitTransition = { fadeOut(tween(exitMs)) },
             ) {
                 composable(Routes.ONBOARDING) {
                     OnboardingScreen(onFinished = {
@@ -116,14 +123,6 @@ fun StudinNavHost(nav: NavHostController, startDestination: String) {
                 composable(Routes.PERMISSIONS) { PermissionsScreen(onBack = back) }
                 composable(Routes.PRIVACY) { PrivacyScreen(onBack = back) }
             }
-            AnimatedVisibility(
-                visible = showBar,
-                modifier = Modifier.align(Alignment.BottomCenter),
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut(),
-            ) {
-                StudinBottomBar(current = route, onSelect = { nav.navigateTopLevel(it.route) })
-            }
         }
     }
 }
@@ -134,41 +133,50 @@ private fun NavHostController.navigateTopLevel(route: String) = navigate(route) 
     restoreState = true
 }
 
-/** Floating glass bottom bar. Screens should add [BottomBarPadding] at the end of scroll content. */
 @Composable
-fun StudinBottomBar(current: String?, onSelect: (TopLevel) -> Unit) {
-    val ex = Studin.extras
-    Box(
-        Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = 14.dp, vertical = 10.dp)
-    ) {
-        Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp))
-                .background(if (ex.isDark) Color(0xE60B1636) else Color(0xF2FFFFFF))
-                .border(1.dp, ex.glassBorder, RoundedCornerShape(26.dp))
-                .padding(horizontal = 6.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-        ) {
-            TopLevel.entries.forEach { item ->
-                val selected = current == item.route
-                Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(20.dp))
-                        .background(if (selected) Brush.linearGradient(listOf(StudinColors.Mint.copy(alpha = 0.22f), StudinColors.Cyan.copy(alpha = 0.12f))) else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
-                        .clickable(remember { MutableInteractionSource() }, null, role = Role.Tab) { onSelect(item) }
-                        .semantics { this.selected = selected }
-                        .padding(vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(
-                        if (selected) item.selectedIcon else item.icon, contentDescription = item.label,
-                        tint = if (selected) MaterialTheme.colorScheme.primary else ex.muted, modifier = Modifier.size(24.dp),
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(item.label, style = MaterialTheme.typography.labelSmall, color = if (selected) MaterialTheme.colorScheme.primary else ex.muted, maxLines = 1)
-                }
-            }
+private fun StudinNavigationBar(isSelected: (TopLevel) -> Boolean, onSelect: (TopLevel) -> Unit) {
+    NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+        TopLevel.entries.forEach { item ->
+            val selected = isSelected(item)
+            NavigationBarItem(
+                selected = selected,
+                onClick = { onSelect(item) },
+                icon = { Icon(if (selected) item.selectedIcon else item.icon, contentDescription = null) },
+                label = { Text(item.label, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                    unselectedIconColor = StudINTheme.colors.textSecondary,
+                    unselectedTextColor = StudINTheme.colors.textSecondary,
+                ),
+            )
         }
     }
 }
 
-/** Space to leave at the bottom of top-level screens so content clears the floating bar. */
-val BottomBarPadding = 110.dp
+@Composable
+private fun StudinNavigationRail(isSelected: (TopLevel) -> Boolean, onSelect: (TopLevel) -> Unit) {
+    NavigationRail(containerColor = MaterialTheme.colorScheme.surface, header = { StudINLogo(size = 40.dp) }) {
+        TopLevel.entries.forEach { item ->
+            val selected = isSelected(item)
+            NavigationRailItem(
+                selected = selected,
+                onClick = { onSelect(item) },
+                icon = { Icon(if (selected) item.selectedIcon else item.icon, contentDescription = null) },
+                label = { Text(item.label, style = MaterialTheme.typography.labelMedium, maxLines = 1) },
+                colors = NavigationRailItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                    unselectedIconColor = StudINTheme.colors.textSecondary,
+                    unselectedTextColor = StudINTheme.colors.textSecondary,
+                ),
+            )
+        }
+    }
+}
+
+/** V1 screens added this to clear the floating bar. The scaffold now handles it. */
+@Deprecated("The navigation scaffold reserves space for the bar; remove this padding.")
+val BottomBarPadding = 0.dp

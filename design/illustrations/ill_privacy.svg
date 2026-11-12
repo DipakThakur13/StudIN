@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" width="320" height="240">
+  <defs>
+    <linearGradient id="ph" x1="120" y1="30" x2="200" y2="210" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#355846"/><stop offset="1" stop-color="#1F3A2C"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="160" cy="214" rx="110" ry="8" fill="#243F32" opacity="0.10"/>
+  <!-- phone -->
+  <rect x="112" y="30" width="96" height="182" rx="18" fill="#202823"/>
+  <rect x="117" y="35" width="86" height="172" rx="14" fill="url(#ph)"/>
+  <!-- lock -->
+  <path d="M146 112 V100 A14 14 0 0 1 174 100 V112" fill="none" stroke="#FAFAF7" stroke-width="7" stroke-linecap="round"/>
+  <rect x="136" y="110" width="48" height="40" rx="10" fill="#E66B38"/>
+  <circle cx="160" cy="126" r="5" fill="#FFF0E7"/>
+  <rect x="158" y="128" width="4" height="10" rx="2" fill="#FFF0E7"/>
+  <rect x="134" y="166" width="52" height="6" rx="3" fill="#FAFAF7" opacity="0.6"/>
+  <rect x="142" y="178" width="36" height="6" rx="3" fill="#FAFAF7" opacity="0.35"/>
+  <!-- crossed cloud (left) -->
+  <path d="M40 104 a16 16 0 0 1 4 -31.5 a22 22 0 0 1 42 -4 a15 15 0 0 1 8 35.5 Z" fill="#F4F3EE" stroke="#E5E8E1" stroke-width="2"/>
+  <path d="M60 80 L60 96 M53 89 L60 96 L67 89" fill="none" stroke="#B9C4BB" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M34 60 L98 116" stroke="#B84040" stroke-width="4" stroke-linecap="round" opacity="0.85"/>
+  <!-- on-device chip (right) -->
+  <rect x="228" y="88" width="64" height="64" rx="14" fill="#FFFFFF" stroke="#E5E8E1" stroke-width="2"/>
+  <rect x="244" y="104" width="32" height="32" rx="7" fill="#243F32"/>
+  <path d="M254 120 l3 6.5 6.5 3 -6.5 3 -3 6.5 -3 -6.5 -6.5 -3 6.5 -3 Z" transform="translate(6,-10)" fill="#B4DEC0"/>
+  <path d="M252 98 V104 M260 98 V104 M268 98 V104 M252 136 V142 M260 136 V142 M268 136 V142 M238 112 H244 M238 120 H244 M238 128 H244 M276 112 H282 M276 120 H282 M276 128 H282" stroke="#B9C4BB" stroke-width="2.6" stroke-linecap="round"/>
+  <!-- check badge -->
+  <circle cx="200" cy="58" r="16" fill="#287A55"/>
+  <path d="M192 58 L198 64 L209 52" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M272 50 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3 Z" fill="#E66B38"/>
+  <circle cx="58" cy="160" r="3.5" fill="#7865A5" opacity="0.6"/>
+</svg>

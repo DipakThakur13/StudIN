@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+<defs>
+    <linearGradient id="tile" x1="14" y1="8" x2="94" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#355846"/>
+      <stop offset="1" stop-color="#1B3227"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="54" y1="26" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F3A16D"/>
+      <stop offset="1" stop-color="#E66B38"/>
+    </linearGradient>
+  </defs>
+<g transform="translate(9.72,10.8)"><g transform="scale(0.82)">
+  <!-- rays -->
+  <path d="M54 17 L54 22" stroke="#F3A16D" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+  <path d="M34.5 25 L37.8 28.6" stroke="#F3A16D" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+  <path d="M73.5 25 L70.2 28.6" stroke="#F3A16D" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+  <!-- rising sun -->
+  <circle cx="54" cy="46" r="15" fill="url(#sun)"/>
+  <!-- cover -->
+  <path d="M54 55 C45 49 32 46.5 18 48.5 L18 84.5 C32 82.5 45 85 54 91.5 C63 85 76 82.5 90 84.5 L90 48.5 C76 46.5 63 49 54 55 Z" fill="#E66B38"/>
+  <!-- book: left page -->
+  <path d="M54 52 C46 45.5 34.5 43 22 44.5 L22 80 C34.5 78.5 46 81 54 87.5 Z" fill="#FAFAF7"/>
+  <!-- right page -->
+  <path d="M54 52 C62 45.5 73.5 43 86 44.5 L86 80 C73.5 78.5 62 81 54 87.5 Z" fill="#F1EEE4"/>
+  <!-- spine -->
+  <path d="M54 52 L54 87.5" stroke="#243F32" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+  <!-- text lines -->
+  <path d="M29 55.5 C36 55 42 56 47 58.5" stroke="#C9D3CC" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <path d="M29 63 C36 62.5 42 63.5 47 66" stroke="#C9D3CC" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <path d="M29 70.5 C35 70 40 71 44 73" stroke="#C9D3CC" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <path d="M79 55.5 C72 55 66 56 61 58.5" stroke="#D6CDB8" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <path d="M79 63 C72 62.5 66 63.5 61 66" stroke="#D6CDB8" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+</g></g>
+</svg>

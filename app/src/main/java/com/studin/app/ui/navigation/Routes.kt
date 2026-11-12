@@ -30,6 +30,8 @@ object Routes {
     const val PERMISSIONS = "permissions"
     const val PRIVACY = "privacy"
 
+    val TOP_LEVEL = setOf(HOME, FOCUS, STUDY, AI, INSIGHTS)
+
     fun deck(id: Long) = "deck/$id"
     fun review(deckId: Long? = null) = "review?deckId=${deckId ?: -1}"
     fun quiz(deckId: Long? = null) = "quiz?deckId=${deckId ?: -1}"

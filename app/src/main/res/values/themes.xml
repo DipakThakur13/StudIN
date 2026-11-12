@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.StudIN" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/studin_navy</item>
+    <style name="Theme.StudIN" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/studin_window_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
     <style name="Theme.StudIN.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/studin_navy</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <item name="windowSplashScreenBackground">@color/studin_window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
         <item name="postSplashScreenTheme">@style/Theme.StudIN</item>
     </style>
 

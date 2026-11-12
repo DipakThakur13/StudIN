@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="studin_navy">#060E26</color>
-    <color name="studin_mint">#2EE6A6</color>
+    <!-- Window / splash colours only. Compose UI reads tokens from core/designsystem/Tokens.kt. -->
+    <color name="studin_window_background">#FAFAF7</color>
+    <color name="studin_brand_forest">#243F32</color>
+    <color name="studin_brand_orange">#E66B38</color>
 </resources>

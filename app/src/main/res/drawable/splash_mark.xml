@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from design/logo/splash_mark.svg by design/svg2vd.py – edit the SVG, not this file. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateX="19.44" android:translateY="19.44">
+        <group android:scaleX="0.64" android:scaleY="0.64">
+            <path
+                android:pathData="M26,0 H82 A26,26 0 0 1 108,26 V82 A26,26 0 0 1 82,108 H26 A26,26 0 0 1 0,82 V26 A26,26 0 0 1 26,0 Z">
+                <aapt:attr name="android:fillColor">
+                    <gradient android:type="linear" android:startX="14" android:startY="8" android:endX="94" android:endY="100">
+                        <item android:offset="0" android:color="#355846"/>
+                        <item android:offset="1" android:color="#1B3227"/>
+                    </gradient>
+                </aapt:attr>
+            </path>
+            <path
+                android:pathData="M54 17 L54 22"
+                android:strokeColor="#F3A16D"
+                android:strokeWidth="3.6"
+                android:strokeLineCap="round" />
+            <path
+                android:pathData="M34.5 25 L37.8 28.6"
+                android:strokeColor="#F3A16D"
+                android:strokeWidth="3.6"
+                android:strokeLineCap="round" />
+            <path
+                android:pathData="M73.5 25 L70.2 28.6"
+                android:strokeColor="#F3A16D"
+                android:strokeWidth="3.6"
+                android:strokeLineCap="round" />
+            <path
+                android:pathData="M39,46 a15,15 0 1,0 30,0 a15,15 0 1,0 -30,0 Z">
+                <aapt:attr name="android:fillColor">
+                    <gradient android:type="linear" android:startX="54" android:startY="26" android:endX="54" android:endY="56">
+                        <item android:offset="0" android:color="#F3A16D"/>
+                        <item android:offset="1" android:color="#E66B38"/>
+                    </gradient>
+                </aapt:attr>
+            </path>
+            <path
+                android:pathData="M54 55 C45 49 32 46.5 18 48.5 L18 84.5 C32 82.5 45 85 54 91.5 C63 85 76 82.5 90 84.5 L90 48.5 C76 46.5 63 49 54 55 Z"
+                android:fillColor="#E66B38" />
+            <path
+                android:pathData="M54 52 C46 45.5 34.5 43 22 44.5 L22 80 C34.5 78.5 46 81 54 87.5 Z"
+                android:fillColor="#FAFAF7" />
+            <path
+                android:pathData="M54 52 C62 45.5 73.5 43 86 44.5 L86 80 C73.5 78.5 62 81 54 87.5 Z"
+                android:fillColor="#F1EEE4" />
+            <path
+                android:pathData="M54 52 L54 87.5"
+                android:strokeColor="#243F32"
+                android:strokeWidth="2.4"
+                android:strokeLineCap="round" />
+            <path
+                android:pathData="M29 55.5 C36 55 42 56 47 58.5"
+                android:strokeColor="#C9D3CC"
+                android:strokeWidth="2.2"
+                android:strokeLineCap="round" />
+            <path
+                android:pathData="M29 63 C36 62.5 42 63.5 47 66"
+                android:strokeColor="#C9D3CC"
+                android:strokeWidth="2.2"
+                android:strokeLineCap="round" />
+            <path
+                android:pathData="M29 70.5 C35 70 40 71 44 73"
+                android:strokeColor="#C9D3CC"
+                android:strokeWidth="2.2"
+                android:strokeLineCap="round" />
+            <path
+                android:pathData="M79 55.5 C72 55 66 56 61 58.5"
+                android:strokeColor="#D6CDB8"
+                android:strokeWidth="2.2"
+                android:strokeLineCap="round" />
+            <path
+                android:pathData="M79 63 C72 62.5 66 63.5 61 66"
+                android:strokeColor="#D6CDB8"
+                android:strokeWidth="2.2"
+                android:strokeLineCap="round" />
+        </group>
+    </group>
+</vector>

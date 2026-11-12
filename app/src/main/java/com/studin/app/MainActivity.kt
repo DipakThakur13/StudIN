@@ -42,6 +42,9 @@ class MainActivity : ComponentActivity() {
                 StudinNavHost(nav, if (initial.onboardingDone) Routes.HOME else Routes.ONBOARDING)
                 LaunchedEffect(route) {
                     val r = route ?: return@LaunchedEffect
+                    // The NavHost sets its graph during composition; wait for it so a cold start
+                    // from a notification doesn't navigate before the graph exists.
+                    nav.currentBackStackEntryFlow.first()
                     if (settings.onboardingDone) nav.navigate(r) { launchSingleTop = true }
                     pendingRoute.value = null
                 }

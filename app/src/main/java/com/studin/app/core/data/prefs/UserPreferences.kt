@@ -24,7 +24,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 data class AppSettings(
     val onboardingDone: Boolean = false,
-    val themeMode: ThemeMode = ThemeMode.DARK,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val streaksEnabled: Boolean = true,
     /** Questions asked at the break gate (0–5). 0 = just a mindful pause. */
     val gateQuestions: Int = 2,
@@ -80,7 +80,7 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
     val settings: Flow<AppSettings> = store.data.map { p ->
         AppSettings(
             onboardingDone = p[K.onboarding] ?: false,
-            themeMode = p[K.theme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.DARK,
+            themeMode = p[K.theme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
             streaksEnabled = p[K.streaks] ?: true,
             gateQuestions = (p[K.gateQ] ?: 2).coerceIn(0, 5),
             passMinutes = (p[K.passMin] ?: 5).coerceIn(1, 30),

@@ -203,7 +203,7 @@ private fun TutorTab(vm: AiViewModel) {
             }
         }
         Row(
-            Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = BottomBarPadding - 6.dp),
+            Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 0.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlinedTextField(

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" width="320" height="240">
+  <defs>
+    <linearGradient id="visor" x1="118" y1="96" x2="200" y2="150" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2A3530"/><stop offset="1" stop-color="#151C18"/>
+    </linearGradient>
+    <linearGradient id="body" x1="120" y1="160" x2="200" y2="214" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#EEF0EA"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="160" cy="216" rx="100" ry="8" fill="#243F32" opacity="0.10"/>
+  <!-- body -->
+  <path d="M120 214 C120 186 136 168 160 168 C184 168 200 186 200 214 Z" fill="url(#body)" stroke="#E5E8E1" stroke-width="2"/>
+  <circle cx="160" cy="192" r="9" fill="#E3F1E8"/>
+  <path d="M160 186 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2 Z" fill="#287A55"/>
+  <!-- ears -->
+  <rect x="98" y="110" width="16" height="34" rx="8" fill="#355846"/>
+  <rect x="206" y="110" width="16" height="34" rx="8" fill="#355846"/>
+  <!-- head -->
+  <rect x="108" y="82" width="104" height="90" rx="34" fill="#FFFFFF" stroke="#E5E8E1" stroke-width="2"/>
+  <rect x="120" y="98" width="80" height="56" rx="24" fill="url(#visor)"/>
+  <!-- eyes -->
+  <rect x="136" y="113" width="14" height="22" rx="7" fill="#B4DEC0"/>
+  <rect x="170" y="113" width="14" height="22" rx="7" fill="#B4DEC0"/>
+  <circle cx="146" cy="119" r="2.6" fill="#FFFFFF"/>
+  <circle cx="180" cy="119" r="2.6" fill="#FFFFFF"/>
+  <path d="M150 143 C155 147 165 147 170 143" fill="none" stroke="#B4DEC0" stroke-width="3" stroke-linecap="round"/>
+  <!-- graduation cap -->
+  <path d="M160 46 L214 66 L160 86 L106 66 Z" fill="#243F32"/>
+  <path d="M130 76 L130 90 C130 90 142 98 160 98 C178 98 190 90 190 90 L190 76 L160 86 Z" fill="#1A2E23"/>
+  <path d="M160 66 L200 74 L200 96" fill="none" stroke="#E66B38" stroke-width="2.6" stroke-linecap="round"/>
+  <rect x="196" y="94" width="8" height="12" rx="3" fill="#E66B38"/>
+  <!-- chat bubbles -->
+  <path d="M28 56 h66 a12 12 0 0 1 12 12 v20 a12 12 0 0 1 -12 12 h-44 l-12 10 v-10 h-10 a12 12 0 0 1 -12 -12 v-20 a12 12 0 0 1 12 -12 Z" fill="#FFFFFF" stroke="#E5E8E1" stroke-width="2"/>
+  <rect x="32" y="70" width="50" height="6" rx="3" fill="#C9D3CC"/>
+  <rect x="32" y="82" width="34" height="6" rx="3" fill="#C9D3CC"/>
+  <path d="M234 108 h56 a12 12 0 0 1 12 12 v18 a12 12 0 0 1 -12 12 h-8 v10 l-12 -10 h-36 a12 12 0 0 1 -12 -12 v-18 a12 12 0 0 1 12 -12 Z" fill="#7865A5"/>
+  <circle cx="246" cy="129" r="4" fill="#FFFFFF"/>
+  <circle cx="262" cy="129" r="4" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="278" cy="129" r="4" fill="#FFFFFF" opacity="0.6"/>
+  <!-- sparkles -->
+  <path d="M244 52 l3.6 9 9 3.6 -9 3.6 -3.6 9 -3.6 -9 -9 -3.6 9 -3.6 Z" fill="#7865A5"/>
+  <path d="M272 82 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 Z" fill="#E66B38"/>
+  <path d="M64 150 l2.6 6.4 6.4 2.6 -6.4 2.6 -2.6 6.4 -2.6 -6.4 -6.4 -2.6 6.4 -2.6 Z" fill="#E66B38"/>
+  <circle cx="84" cy="128" r="3.5" fill="#B4DEC0"/>
+</svg>
