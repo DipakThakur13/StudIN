@@ -12,3 +12,4 @@ build/
 *.keystore
 *.jks
 !debug.keystore
+.claude/
