@@ -4,6 +4,7 @@ import com.studin.app.core.data.prefs.UserPreferences
 import com.studin.app.core.data.repo.FocusRepository
 import com.studin.app.core.data.repo.ProfileRepository
 import com.studin.app.core.data.repo.StudyRepository
+import com.studin.app.platform.focus.FocusController
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
@@ -16,4 +17,5 @@ interface AppEntryPoint {
     fun profiles(): ProfileRepository
     fun study(): StudyRepository
     fun focus(): FocusRepository
+    fun focusController(): FocusController
 }
