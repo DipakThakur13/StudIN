@@ -126,6 +126,12 @@ class ScreenshotTour {
             ep.focus().setRule("com.instagram.android", "Instagram", RuleMode.BLOCK)
         }
 
+        // Model download is offered on 64-bit phones with >= 4 GB RAM: emulate a typical 8 GB arm64 phone.
+        org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_64_BIT_ABIS", arrayOf("arm64-v8a"))
+        val am = ctx.getSystemService(android.app.ActivityManager::class.java)
+        shadowOf(am).setMemoryInfo(android.app.ActivityManager.MemoryInfo().apply { totalMem = 8_000_000_000L; availMem = 4_000_000_000L })
+        runBlocking { ep.onDeviceLlm().refreshState() }
+
         // ---------------- Light theme, standard phone: every screen
         mainScreens.forEach { (n, r) -> shot("light", n, r) }
         listOf(
@@ -136,6 +142,8 @@ class ScreenshotTour {
 
         // ---------------- States: review revealed, AI conversation, focus lifecycle
         launch(Routes.review()); if (clickText("Show answer")) capture("light", "review_revealed")
+        launch(Routes.AI)
+        if (clickText("Download AI Tutor")) { settle(); capture("light", "ai_download_confirm") }
         launch(Routes.AI)
         if (clickText("Plan my revision")) { settle(10); capture("light", "ai_conversation") }
         launch(Routes.INSIGHTS); if (clickText("30D")) capture("light", "insights_30d"); if (clickText("12W")) capture("light", "insights_12w")

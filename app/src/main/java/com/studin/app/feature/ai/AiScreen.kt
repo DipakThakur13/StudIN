@@ -1,5 +1,24 @@
 package com.studin.app.feature.ai
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.FileOpen
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import com.studin.app.ai.DownloadUi
+import com.studin.app.ai.GemmaModel
+import com.studin.app.core.designsystem.StudINBottomSheet
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -132,42 +151,83 @@ import com.studin.domain.model.Verdict
 import java.text.DateFormat
 import java.util.Date
 
-private enum class AiTab(val label: String, val icon: ImageVector) {
-    TUTOR("Tutor", Icons.Rounded.Psychology), CHECK("Content check", Icons.AutoMirrored.Rounded.FactCheck), MODEL("Model", Icons.Rounded.Memory)
-}
-
 @Composable
 fun AiScreen(onNavigate: (String) -> Unit, vm: AiViewModel = hiltViewModel()) {
     val llm by vm.llmState.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val thinking by vm.thinking.collectAsStateWithLifecycle()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val download by vm.download.collectAsStateWithLifecycle()
+    var showSheet by rememberSaveable { mutableStateOf(false) }
+    var confirmRemove by rememberSaveable { mutableStateOf(false) }
+    var confirmDownload by rememberSaveable { mutableStateOf(false) }
+    val access by vm.access.collectAsStateWithLifecycle()
     val status = engineStatus(llm, settings.aiUseLlm, thinking)
+    val installed = llm is LlmState.Installed || llm is LlmState.Loading || llm is LlmState.Ready
+    val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) vm.importModel(uri) }
 
     StudINScaffold(
         title = "AI Tutor",
         subtitle = "Your personal, offline study assistant",
-        actions = { EngineBadge(status); Spacer(Modifier.width(Spacing.md)) },
-    ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            // Shorter label when the effective width (dp ÷ font scale) can't fit "Content check".
-            val config = LocalConfiguration.current
-            val compactTabs = config.screenWidthDp / config.fontScale < 390f
-            StudINSegmentedTabs(
-                options = AiTab.entries.map { if (compactTabs && it == AiTab.CHECK) "Check" else it.label }, selectedIndex = tab, onSelect = { tab = it },
-                modifier = Modifier.studinContentWidth().padding(horizontal = Spacing.screen),
+        actions = {
+            val running = download as? DownloadUi.Running
+            if (running != null) StudINBadge(
+                if (running.waiting) "Waiting for network" else "Downloading ${(running.fraction * 100).toInt()}%",
+                container = StudINTheme.colors.aiContainer, content = StudINTheme.colors.ai, icon = Icons.Rounded.Download,
+            ) else EngineBadge(status)
+            ModelMenu(
+                installed = installed, useLlm = settings.aiUseLlm,
+                onUseLlm = vm::setUseLlm, onImport = { importer.launch(arrayOf("*/*")) }, onRemove = { confirmRemove = true },
             )
-            Spacer(Modifier.height(Spacing.xs))
-            val ms = motionDuration(Motion.card)
-            AnimatedContent(tab, label = "aiTab", transitionSpec = { fadeIn(tween(ms)) togetherWith fadeOut(tween(ms / 2)) }, modifier = Modifier.weight(1f)) { t ->
-                when (AiTab.entries[t]) {
-                    AiTab.TUTOR -> TutorTab(vm, onNavigate)
-                    AiTab.CHECK -> CheckTab(vm)
-                    AiTab.MODEL -> ModelTab(vm, llm, settings.aiUseLlm, settings.aiModelSha256, thinking)
-                }
+        },
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            TutorTab(vm, onNavigate, downloading = download is DownloadUi.Running) {
+                ModelCard(
+                    llm = llm, useLlm = settings.aiUseLlm, download = download, supported = vm.deviceSupportsModel,
+                    checking = access == AccessCheck.Checking && !showSheet,
+                    onDownload = {
+                        vm.resetAccess()
+                        val needsOwn = (download as? DownloadUi.Failed)?.needsToken == true
+                        if (GemmaModel.bundledToken != null && !needsOwn) confirmDownload = true else showSheet = true
+                    },
+                    onCancel = vm::cancelDownload,
+                    onUseLlm = { vm.setUseLlm(true) },
+                )
             }
         }
     }
+    if (showSheet) DownloadSheet(vm, onDismiss = { showSheet = false })
+    if (confirmDownload) {
+        val context = LocalContext.current
+        val metered = remember { vm.isMetered() }
+        StudINDialog(
+            title = "Download AI Tutor?", onDismiss = { confirmDownload = false },
+            confirmLabel = "Download ${GemmaModel.sizeLabel}", icon = Icons.Rounded.Download,
+            onConfirm = { confirmDownload = false; vm.startBundledDownload(onNeedsOwnToken = { showSheet = true }) },
+            text = {
+                Column {
+                    Text(
+                        "Google's ${GemmaModel.DISPLAY_NAME} downloads once (${GemmaModel.sizeLabel}) and then runs fully offline on this phone." +
+                            if (metered) " You're on mobile data — Wi-Fi is recommended." else " Wi-Fi is recommended.",
+                    )
+                    Spacer(Modifier.height(Spacing.xs))
+                    Text(
+                        "Gemma is provided under and subject to the Gemma Terms of Use. By downloading you agree to them and to Google's Gemma Prohibited Use Policy.",
+                        style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
+                    )
+                    StudINTextButton("Read the Gemma Terms of Use", {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GemmaModel.TERMS_PAGE)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    })
+                }
+            },
+        )
+    }
+    if (confirmRemove) StudINDialog(
+        title = "Remove the AI Tutor model?", onDismiss = { confirmRemove = false },
+        confirmLabel = "Remove", destructive = true, icon = Icons.Rounded.DeleteOutline,
+        onConfirm = { confirmRemove = false; vm.deleteModel() },
+        text = { Text("Frees about ${GemmaModel.sizeLabel}. StudIN Lite AI keeps working, and you can download Gemma again any time.") },
+    )
 }
 
 @Composable
@@ -190,7 +250,7 @@ private fun EngineBadge(status: EngineStatus) {
 private data class QuickAction(val title: String, val supporting: String, val icon: ImageVector)
 
 @Composable
-private fun TutorTab(vm: AiViewModel, onNavigate: (String) -> Unit) {
+private fun TutorTab(vm: AiViewModel, onNavigate: (String) -> Unit, downloading: Boolean, modelCard: @Composable () -> Unit) {
     val messages by vm.messages.collectAsStateWithLifecycle()
     val thinking by vm.thinking.collectAsStateWithLifecycle()
     var input by rememberSaveable { mutableStateOf("") }
@@ -218,6 +278,7 @@ private fun TutorTab(vm: AiViewModel, onNavigate: (String) -> Unit) {
         ) {
             if (messages.isEmpty()) {
                 item(key = "intro") { TutorIntro() }
+                item(key = "model") { modelCard() }
                 item(key = "qa-header") { StudINSectionHeader("Quick actions", Modifier.padding(top = Spacing.xs)) }
                 item(key = "qa") {
                     val actions = listOf(
@@ -245,6 +306,7 @@ private fun TutorTab(vm: AiViewModel, onNavigate: (String) -> Unit) {
                     )
                 }
             } else {
+                if (downloading) item(key = "model-mini") { modelCard() }
                 item(key = "conv-header") {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("Conversation", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f).semantics { heading() })
@@ -299,7 +361,7 @@ private fun TutorIntro() {
                 Spacer(Modifier.height(Spacing.xxs))
                 Text(
                     if (compact) "Ask, summarise or plan – answered from your own cards and syllabus."
-                    else "Ask about a concept, summarise your notes or plan revision. I answer from your own cards and syllabus – and from your imported model, if you add one.",
+                    else "Ask about a concept, summarise your notes or plan revision. I answer from your own cards and syllabus – and with Gemma, once you download it.",
                     style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
                 )
             }
@@ -415,318 +477,205 @@ private fun ReplyText(text: String) {
     }
 }
 
-// ------------------------------------------------------------------ Content check
 
-private val samples = listOf(
-    "Kinematics One Shot | JEE Physics",
-    "BGMI funny moments gameplay",
-    "Polity lecture: Fundamental Rights",
-    "Physics in GTA 5 explained",
-    "रसायन अध्याय 3 व्याख्यान",
-    "Sunday vlog",
-)
+// ------------------------------------------------------------------ AI Tutor model (Gemma)
 
 @Composable
-private fun CheckTab(vm: AiViewModel) {
-    val result by vm.check.collectAsStateWithLifecycle()
-    val checkedText by vm.checkedText.collectAsStateWithLifecycle()
-    val checking by vm.checking.collectAsStateWithLifecycle()
-    val error by vm.checkError.collectAsStateWithLifecycle()
-    val decisions by vm.decisions.collectAsStateWithLifecycle()
-    var title by rememberSaveable { mutableStateOf("") }
-    LazyColumn(
-        Modifier.fillMaxSize().imePadding().studinContentWidth(),
-        contentPadding = screenContentPadding(PaddingValues()),
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-    ) {
-        item {
-            StudINCard(Modifier.fillMaxWidth()) {
-                Text("Test what Focus Guard would do", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-                Spacer(Modifier.height(Spacing.xxs))
-                Text(
-                    "Paste a video or post title. StudIN classifies it on this phone with the same rules Smart mode uses.",
-                    style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
+private fun ModelMenu(installed: Boolean, useLlm: Boolean, onUseLlm: (Boolean) -> Unit, onImport: () -> Unit, onRemove: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        StudINIconButton(Icons.Rounded.MoreVert, "AI Tutor options", { open = true })
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, shape = StudINShapes.smallCard) {
+            if (installed) {
+                DropdownMenuItem(
+                    text = { Text("Use ${GemmaModel.DISPLAY_NAME}") },
+                    leadingIcon = { Icon(if (useLlm) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank, null) },
+                    onClick = { onUseLlm(!useLlm); open = false },
                 )
-                Spacer(Modifier.height(Spacing.sm))
-                StudINTextField(
-                    value = title, onValueChange = { title = it.take(300) }, label = "Video or post title",
-                    imeAction = ImeAction.Search, onImeAction = { vm.checkTitle(title) },
-                    leadingIcon = { Icon(Icons.Rounded.Search, null) },
-                )
-                Spacer(Modifier.height(Spacing.sm))
-                StudINPrimaryButton("Check title", { vm.checkTitle(title) }, Modifier.fillMaxWidth(), icon = Icons.AutoMirrored.Rounded.FactCheck,
-                    enabled = title.isNotBlank(), loading = checking)
-                Spacer(Modifier.height(Spacing.sm))
-                Text("Try an example", style = MaterialTheme.typography.labelLarge, color = StudINTheme.colors.textSecondary)
-                Spacer(Modifier.height(Spacing.xs))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    samples.forEach { s -> StudINChip(s, onClick = { title = s; vm.checkTitle(s) }) }
-                }
-            }
-        }
-        error?.let { e -> item { StudINErrorState(e, onRetry = { vm.checkTitle(title) }) } }
-        result?.let { r -> item(key = "verdict") { VerdictCard(r, checkedText.orEmpty()) } }
-        item { HowItDecides() }
-        item { StudINSectionHeader("Recent Focus Guard decisions", Modifier.padding(top = Spacing.xs), supporting = "Titles are never stored – only the matched keywords") }
-        if (decisions.isEmpty()) {
-            item {
-                Text(
-                    "No decisions yet. They appear here when Focus Guard checks Smart-mode apps during a focus session.",
-                    style = MaterialTheme.typography.bodyMedium, color = StudINTheme.colors.textSecondary,
+                DropdownMenuItem(
+                    text = { Text("Remove AI Tutor model") },
+                    leadingIcon = { Icon(Icons.Rounded.DeleteOutline, null) },
+                    onClick = { open = false; onRemove() },
                 )
             }
-        } else {
-            item {
-                StudINCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = Spacing.xxs)) {
-                    decisions.forEachIndexed { i, d ->
-                        if (i > 0) HorizontalDivider(color = StudINTheme.colors.border, modifier = Modifier.padding(horizontal = Spacing.card))
-                        DecisionRow(d)
-                    }
-                }
-            }
+            DropdownMenuItem(
+                text = { Text("Import model file…") },
+                leadingIcon = { Icon(Icons.Rounded.FileOpen, null) },
+                onClick = { open = false; onImport() },
+            )
         }
     }
 }
 
+/** Download offer / progress / ready state for the on-device Gemma tutor. */
 @Composable
-private fun HowItDecides() {
-    StudINCard(Modifier.fillMaxWidth(), containerColor = StudINTheme.colors.surfaceSecondary, border = null) {
-        Text("How Smart mode decides", style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
-        Spacer(Modifier.height(Spacing.xs))
-        TierLine("Tier 0", "Your allow / block keyword lists always win")
-        TierLine("Tier 1", "Syllabus-aware lexicon with Hindi–English terms")
-        TierLine("Tier 2", "Optional on-device model for unclear titles (advisory only)")
-        Spacer(Modifier.height(Spacing.xxs))
-        Text("A break screen only appears at high confidence. When unsure, StudIN allows.",
-            style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary)
-    }
-}
-
-@Composable
-private fun TierLine(tier: String, text: String) {
-    Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-        StudINBadge(tier, container = MaterialTheme.colorScheme.surface)
-        Spacer(Modifier.width(Spacing.xs))
-        Text(text, style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-private data class VerdictStyle(val icon: ImageVector, val container: Color, val content: Color)
-
-@Composable
-private fun verdictStyle(v: Verdict): VerdictStyle {
+private fun ModelCard(
+    llm: LlmState,
+    useLlm: Boolean,
+    download: DownloadUi,
+    supported: Boolean,
+    checking: Boolean,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onUseLlm: () -> Unit,
+) {
     val c = StudINTheme.colors
-    return when (v) {
-        Verdict.ALLOW -> VerdictStyle(Icons.Rounded.CheckCircle, c.successContainer, c.success)
-        Verdict.WARN -> VerdictStyle(Icons.Rounded.Warning, c.warningContainer, c.warning)
-        Verdict.BLOCK -> VerdictStyle(Icons.Rounded.Shield, MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.error)
-        Verdict.UNKNOWN -> VerdictStyle(Icons.AutoMirrored.Rounded.HelpOutline, c.surfaceSecondary, c.textSecondary)
-    }
-}
-
-@Composable
-private fun VerdictCard(c: ContentCheck, evaluated: String) {
-    val r = c.result
-    val style = verdictStyle(r.verdict)
-    StudINCard(Modifier.fillMaxWidth()) {
-        Text("Evaluated", style = MaterialTheme.typography.labelMedium, color = StudINTheme.colors.textSecondary)
-        Text("“$evaluated”", style = MaterialTheme.typography.bodyLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
-        Spacer(Modifier.height(Spacing.sm))
-        Row(
-            Modifier.fillMaxWidth().background(style.container, StudINShapes.smallCard).padding(Spacing.sm)
-                .semantics(mergeDescendants = true) {},
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(style.icon, contentDescription = null, tint = style.content)
-            Spacer(Modifier.width(Spacing.xs))
-            Column(Modifier.weight(1f)) {
-                Text(verdictLabel(r.verdict), style = MaterialTheme.typography.titleSmall, color = style.content)
-                Text(r.reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-            }
-        }
-        Spacer(Modifier.height(Spacing.sm))
-        if (r.confidence > 0.0) {
-            MeterRow("Confidence in this verdict", r.confidence.toFloat(), style.content)
-            Spacer(Modifier.height(Spacing.xs))
-        }
-        MeterRow("Looks like study material", r.studyProbability.toFloat(), MaterialTheme.colorScheme.primary)
-        val signals = r.syllabusMatches.map { "Syllabus: $it" } + r.studySignals.map { "Study: $it" } + r.distractionSignals.map { "Distraction: $it" }
-        if (signals.isNotEmpty()) {
-            Spacer(Modifier.height(Spacing.sm))
-            Text("Signals found", style = MaterialTheme.typography.labelLarge, color = StudINTheme.colors.textSecondary)
-            Spacer(Modifier.height(Spacing.xxs))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xxs + 2.dp), verticalArrangement = Arrangement.spacedBy(Spacing.xxs + 2.dp)) {
-                signals.forEach { StudINBadge(it) }
-            }
-        }
-        Spacer(Modifier.height(Spacing.sm))
-        Text(
-            "Tier ${r.tier} · ${if (c.engine == AiEngine.LLM) "On-device model" else "Lite AI"} · ${c.latencyMs} ms · ${r.ruleVersion}",
-            style = MaterialTheme.typography.labelSmall, color = StudINTheme.colors.textSecondary,
-        )
-    }
-}
-
-@Composable
-private fun MeterRow(label: String, value: Float, color: Color) {
-    val pct = (value * 100).toInt().coerceIn(0, 100)
-    Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = "$label: $pct percent" }) {
-        Row {
-            Text(label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-            Text("$pct%", style = MaterialTheme.typography.labelLarge)
-        }
-        Spacer(Modifier.height(Spacing.xxs))
-        StudINLinearProgress(value, color = color, height = 6.dp)
-    }
-}
-
-@Composable
-private fun DecisionRow(d: ClassificationDecisionEntity) {
-    val v = runCatching { Verdict.valueOf(d.label) }.getOrDefault(Verdict.UNKNOWN)
-    val style = verdictStyle(v)
-    val time = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(d.timestamp))
-    val app = d.sourceApp.substringAfterLast('.').replaceFirstChar { it.uppercase() }
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = Spacing.card, vertical = Spacing.sm)
-            .semantics(mergeDescendants = true) { contentDescription = "${decisionLabel(d.label)} in $app at $time. Signals: ${d.redactedReason}" + if (d.overridden) ". You overrode it" else "" },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(style.icon, null, tint = style.content, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(Spacing.sm))
-        Column(Modifier.weight(1f)) {
-            Text("${decisionLabel(d.label)} · $app", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(d.redactedReason, style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(time, style = MaterialTheme.typography.labelMedium, color = StudINTheme.colors.textSecondary)
-            if (d.overridden) Text("Overridden", style = MaterialTheme.typography.labelSmall, color = StudINTheme.colors.accent)
-        }
-    }
-}
-
-// ------------------------------------------------------------------ Model
-
-@Composable
-private fun ModelTab(vm: AiViewModel, llm: LlmState, useLlm: Boolean, sha: String?, thinking: Boolean) {
-    val model by vm.model.collectAsStateWithLifecycle()
-    var confirmDelete by rememberSaveable { mutableStateOf(false) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::importModel) }
-    val c = StudINTheme.colors
-    LazyColumn(
-        Modifier.fillMaxSize().studinContentWidth(),
-        contentPadding = screenContentPadding(PaddingValues()),
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-    ) {
-        item {
-            StudINCard(Modifier.fillMaxWidth()) {
-                val (title, sub, tone) = when (llm) {
-                    LlmState.NotInstalled -> Triple("Model unavailable", "No model imported. StudIN Lite AI answers from your cards and syllabus on every phone.", c.ai)
-                    is LlmState.Installed -> Triple(llm.name, "${formatBytes(llm.sizeBytes)} · installed, loads on first use", c.ai)
-                    is LlmState.Loading -> Triple("Model loading", "Loading ${llm.name}. This can take 5–20 seconds.", c.ai)
-                    is LlmState.Ready -> Triple(llm.name, if (thinking) "${formatBytes(llm.sizeBytes)} · processing a reply" else "${formatBytes(llm.sizeBytes)} · ready, fully offline", c.success)
-                    is LlmState.Unsupported -> Triple("Not supported on this phone", llm.reason, c.textSecondary)
-                    is LlmState.Error -> Triple("Model error", llm.message, MaterialTheme.colorScheme.error)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    StudINIconTile(if (llm is LlmState.Error) Icons.Rounded.ErrorOutline else Icons.Rounded.Memory, tone, 44.dp)
-                    Spacer(Modifier.width(Spacing.sm))
-                    Column(Modifier.weight(1f)) {
-                        Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.semantics { heading() })
-                        Text(sub, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                    }
-                }
-                if (llm is LlmState.Loading || (thinking && llm is LlmState.Ready)) {
-                    Spacer(Modifier.height(Spacing.sm))
-                    LinearProgressIndicator(Modifier.fillMaxWidth(), color = c.ai, trackColor = c.focusTrack)
-                }
-                if (!sha.isNullOrBlank() && (llm is LlmState.Installed || llm is LlmState.Ready)) {
-                    Spacer(Modifier.height(Spacing.sm))
-                    Text("SHA-256 – compare with the publisher's checksum", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
-                    SelectionContainer {
-                        Text(sha, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            modifier = Modifier.fillMaxWidth().background(c.surfaceSecondary, StudINShapes.badge).padding(Spacing.xs))
-                    }
-                }
-                Spacer(Modifier.height(Spacing.sm))
-                when (llm) {
-                    is LlmState.Installed -> Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                        StudINPrimaryButton("Load now", { vm.load() }, Modifier.weight(1f), icon = Icons.Rounded.PlayArrow)
-                        StudINOutlinedButton("Delete", { confirmDelete = true }, icon = Icons.Rounded.Delete, contentColor = MaterialTheme.colorScheme.error)
-                    }
-                    is LlmState.Ready -> Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                        StudINOutlinedButton("Unload", { vm.unload() }, Modifier.weight(1f), icon = Icons.Rounded.Stop, enabled = !thinking)
-                        StudINOutlinedButton("Delete", { confirmDelete = true }, icon = Icons.Rounded.Delete, enabled = !thinking, contentColor = MaterialTheme.colorScheme.error)
-                    }
-                    is LlmState.Loading, is LlmState.Unsupported -> Unit
-                    else -> StudINPrimaryButton(
-                        if (model.importing) "Importing…" else "Import model file", { picker.launch(arrayOf("*/*")) },
-                        Modifier.fillMaxWidth(), icon = Icons.Rounded.Upload, loading = model.importing,
+    when {
+        download is DownloadUi.Running -> StudINCard(Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StudINIconTile(Icons.Rounded.Download, c.ai, 40.dp)
+                Spacer(Modifier.width(Spacing.sm))
+                Column(Modifier.weight(1f)) {
+                    Text("Downloading AI Tutor", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (download.waiting) "Waiting for an internet connection…"
+                        else "${formatBytes(download.bytes)} of ${GemmaModel.sizeLabel} · ${(download.fraction * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                     )
                 }
-                if (model.importing) {
-                    Spacer(Modifier.height(Spacing.sm))
-                    val p = model.progress
-                    if (p != null && p.totalBytes > 0) {
-                        StudINLinearProgress(p.copiedBytes.toFloat() / p.totalBytes, color = c.ai, label = "Import progress")
-                        Spacer(Modifier.height(Spacing.xxs))
-                        Text("${formatBytes(p.copiedBytes)} of ${formatBytes(p.totalBytes)} · verifying checksum", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
-                    } else LinearProgressIndicator(Modifier.fillMaxWidth(), color = c.ai, trackColor = c.focusTrack)
-                }
-                model.message?.let {
-                    Spacer(Modifier.height(Spacing.xs))
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-                }
+            }
+            Spacer(Modifier.height(Spacing.sm))
+            StudINLinearProgress(download.fraction, color = c.ai, label = "AI Tutor download progress")
+            Spacer(Modifier.height(Spacing.xs))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Keeps going in the background — you can leave this screen.",
+                    style = MaterialTheme.typography.bodySmall, color = c.textSecondary, modifier = Modifier.weight(1f),
+                )
+                StudINTextButton("Cancel", onCancel)
             }
         }
-        item {
-            StudINCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = Spacing.card, vertical = Spacing.sm),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    StudINIconTile(Icons.Rounded.Bolt, c.accent, 36.dp)
-                    Spacer(Modifier.width(Spacing.sm))
-                    Column(Modifier.weight(1f)) {
-                        Text("Use on-device model", style = MaterialTheme.typography.titleMedium)
-                        Text("Off = always use the instant Lite engine (saves battery).", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
-                    }
-                    Switch(checked = useLlm, onCheckedChange = vm::setUseLlm,
-                        modifier = Modifier.semantics { contentDescription = "Use on-device model" })
+        llm is LlmState.Installed || llm is LlmState.Loading || llm is LlmState.Ready -> StudINCard(
+            Modifier.fillMaxWidth(), containerColor = c.successContainer, border = null,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = c.success)
+                Spacer(Modifier.width(Spacing.sm))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (useLlm) "${GemmaModel.DISPLAY_NAME} is your AI Tutor" else "${GemmaModel.DISPLAY_NAME} is installed but switched off",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        when {
+                            !useLlm -> "Lite AI is answering. Turn Gemma on to use it."
+                            llm is LlmState.Loading -> "Loading the model into memory…"
+                            else -> "Runs fully offline on this phone."
+                        },
+                        style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+                    )
                 }
+                if (!useLlm) StudINTextButton("Turn on", onUseLlm)
             }
         }
-        item {
-            StudINCard(Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    StudINIconTile(Icons.Rounded.Download, MaterialTheme.colorScheme.primary, 36.dp)
-                    Spacer(Modifier.width(Spacing.sm))
-                    Text("Getting a model", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+        !supported || llm is LlmState.Unsupported -> StudINCard(Modifier.fillMaxWidth(), containerColor = c.surfaceSecondary, border = null) {
+            Text("Full AI Tutor isn't available on this phone", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "${GemmaModel.DISPLAY_NAME} needs a 64-bit phone with at least 4 GB RAM. StudIN Lite AI keeps working here.",
+                style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
+            )
+        }
+        else -> StudINCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, c.ai.copy(alpha = 0.5f))) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StudINIconTile(Icons.Rounded.AutoAwesome, c.ai, 40.dp)
+                Spacer(Modifier.width(Spacing.sm))
+                Column(Modifier.weight(1f)) {
+                    Text("Get the full AI Tutor", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+                    Text("Google's ${GemmaModel.DISPLAY_NAME} · ${GemmaModel.sizeLabel} · one-time download", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
-                Spacer(Modifier.height(Spacing.xs))
-                Guide("Recommended: Gemma 3 1B IT, int4, MediaPipe .task format (about 0.5–0.6 GB).")
-                Guide("Download it yourself from Kaggle (Gemma models) or Hugging Face (LiteRT community), accept the licence, then copy it to this phone.")
-                Guide("Tap Import and pick the file. StudIN copies it into private storage and shows its SHA-256 so you can verify it.")
-                Guide("Requirements: a 64-bit phone with at least 4 GB RAM. Runs fully offline – StudIN has no internet permission.")
-                Guide("Lite AI (summaries, flashcards from notes, answers from your cards, smart filtering) always works as a fallback.")
             }
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                "Richer explanations, better summaries and smarter flashcards. After the download it runs fully offline on this phone.",
+                style = MaterialTheme.typography.bodyMedium, color = c.textSecondary,
+            )
+            if (download is DownloadUi.Failed) {
+                Spacer(Modifier.height(Spacing.sm))
+                StudINErrorState(download.message)
+            }
+            Spacer(Modifier.height(Spacing.sm))
+            StudINPrimaryButton(
+                when { checking -> "Connecting…"; download is DownloadUi.Failed -> "Try again"; else -> "Download AI Tutor" }, onDownload, Modifier.fillMaxWidth(),
+                icon = Icons.Rounded.Download, loading = checking,
+            )
         }
     }
-    if (confirmDelete) {
-        StudINDialog(
-            title = "Delete the model?", onDismiss = { confirmDelete = false },
-            confirmLabel = "Delete", onConfirm = { confirmDelete = false; vm.deleteModel() }, destructive = true, icon = Icons.Rounded.Delete,
-            text = { Text("The model file is removed from this phone. Lite AI keeps working; you can import the model again later.") },
+}
+
+/** Three steps: accept Google's Gemma licence → create a Read token → paste it and download. */
+@Composable
+private fun DownloadSheet(vm: AiViewModel, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val access by vm.access.collectAsStateWithLifecycle()
+    var token by remember { mutableStateOf("") }
+    var show by remember { mutableStateOf(false) }
+    val metered = remember { vm.isMetered() }
+    fun open(url: String) {
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
+    StudINBottomSheet(onDismiss = onDismiss, title = "Download AI Tutor") {
+        Text(
+            "${GemmaModel.DISPLAY_NAME} (int4, ${GemmaModel.sizeLabel}) comes from the LiteRT community repository on Hugging Face, where Google publishes Gemma for phones. " +
+                "Google asks every user to accept the Gemma licence once — it's free.",
+            style = MaterialTheme.typography.bodyMedium, color = StudINTheme.colors.textSecondary,
         )
+        Spacer(Modifier.height(Spacing.md))
+        SetupStep(1, "Accept the Gemma licence", "Sign in to Hugging Face (free) and tap “Acknowledge license” on the model page.") {
+            StudINOutlinedButton("Open model page", { open(GemmaModel.MODEL_PAGE) }, icon = Icons.AutoMirrored.Rounded.OpenInNew)
+        }
+        SetupStep(2, "Create an access token", "In Settings → Access Tokens, create a token with the “Read” role and copy it.") {
+            StudINOutlinedButton("Open token settings", { open(GemmaModel.TOKENS_PAGE) }, icon = Icons.AutoMirrored.Rounded.OpenInNew)
+        }
+        SetupStep(3, "Paste it and download", null) {
+            StudINTextField(
+                value = token, onValueChange = { token = it.trim().take(200); vm.resetAccess() },
+                label = "Hugging Face token", placeholder = "hf_…",
+                visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardType = KeyboardType.Password, imeAction = ImeAction.Done,
+                isError = access is AccessCheck.Error,
+                supportingText = (access as? AccessCheck.Error)?.message,
+                trailingIcon = {
+                    StudINIconButton(if (show) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, if (show) "Hide token" else "Show token", { show = !show })
+                },
+            )
+        }
+        if (metered) {
+            Text(
+                "You're on mobile data. This is a ${GemmaModel.sizeLabel} download — Wi-Fi is recommended.",
+                style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.warning,
+                modifier = Modifier.padding(bottom = Spacing.xs),
+            )
+        }
+        StudINPrimaryButton(
+            if (access == AccessCheck.Checking) "Checking access…" else "Download ${GemmaModel.sizeLabel}",
+            onClick = { vm.startDownload(token, onStarted = onDismiss) },
+            modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Download,
+            enabled = token.length >= 8, loading = access == AccessCheck.Checking,
+        )
+        Spacer(Modifier.height(Spacing.xs))
+        Text(
+            "Your token is used only to authorise this download and is cleared when it finishes. The file is checked against " +
+                "Google's published SHA-256 before use. By downloading you accept the Gemma Terms of Use.",
+            style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
+        )
+        StudINTextButton("Read the Gemma Terms of Use", { open(GemmaModel.TERMS_PAGE) })
     }
 }
 
 @Composable
-private fun Guide(text: String) {
-    Row(Modifier.padding(vertical = Spacing.xxs)) {
-        Box(Modifier.padding(top = 7.dp).size(5.dp).background(LocalContentColor.current.copy(alpha = 0.6f), CircleShape))
-        Spacer(Modifier.width(Spacing.xs))
-        Text(text, style = MaterialTheme.typography.bodyMedium)
+private fun SetupStep(n: Int, title: String, body: String?, action: @Composable () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(bottom = Spacing.md), verticalAlignment = Alignment.Top) {
+        Box(
+            Modifier.size(28.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) { Text("$n", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer) }
+        Spacer(Modifier.width(Spacing.sm))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            if (body != null) Text(body, style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary)
+            Spacer(Modifier.height(Spacing.xs))
+            action()
+        }
     }
 }

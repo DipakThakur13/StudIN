@@ -516,13 +516,14 @@ fun StudINTextField(
     trailingIcon: @Composable (() -> Unit)? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
 ) {
     OutlinedTextField(
         value = value, onValueChange = onValueChange, modifier = modifier.fillMaxWidth(), enabled = enabled,
         label = label?.let { { Text(it) } }, placeholder = placeholder?.let { { Text(it, color = StudINTheme.colors.textSecondary) } },
         singleLine = singleLine, minLines = minLines, maxLines = maxLines, isError = isError,
         supportingText = supportingText?.let { { Text(it) } },
-        trailingIcon = trailingIcon, leadingIcon = leadingIcon, shape = StudINShapes.input,
+        trailingIcon = trailingIcon, leadingIcon = leadingIcon, shape = StudINShapes.input, visualTransformation = visualTransformation,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         keyboardActions = KeyboardActions(onAny = { onImeAction?.invoke() }),
         colors = OutlinedTextFieldDefaults.colors(

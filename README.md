@@ -23,9 +23,9 @@ Kotlin · Jetpack Compose · Material 3 · Hilt · Room · DataStore · WorkMana
 | 🧠 **Active-recall break gate** | Opening a blocked app shows a gate: answer 0–5 flashcard MCQs for a short break, take a mindful pause, go back to studying, or use the always-available emergency exit. No penalties, no lockouts. |
 | 📚 **Syllabus packs** | JEE, NEET, UPSC, GATE CS, CAT, College CS and Boards with weightage, Hindi/Hinglish aliases and starter flashcards. |
 | 🔁 **Spaced repetition** | SM-2 scheduler with Again/Hard/Good/Easy, 3D flip cards, MCQ quizzes, CSV import/export with strict validation. |
-| ✨ **On-device AI** | *Lite AI* (works on every phone): notes → flashcards, summaries, keyword extraction, retrieval over your own cards, daily plan. *Optional LLM*: import a Gemma `.task` model for a full offline tutor. *ML Kit OCR*: scan handwritten/printed notes into cards. |
+| ✨ **On-device AI** | *Lite AI* (works on every phone): notes → flashcards, summaries, keyword extraction, retrieval over your own cards, daily plan. *Full AI Tutor*: one tap downloads Google's Gemma 3 1B, which then runs fully offline. *ML Kit OCR*: scan handwritten/printed notes into cards. |
 | 📈 **Insights** | 7D / 30D / 12W focus charts, 12-week consistency heatmap, quiz accuracy, review backlog, subject mastery, blocked attempts – with honest notes on what the numbers mean. |
-| 🔒 **Privacy** | The app removes the `INTERNET` permission. No accounts, ads, analytics or uploads. Export/delete everything from Settings. |
+| 🔒 **Privacy** | Nothing you study is ever uploaded. The only network use is the optional, user-started AI Tutor model download. No accounts, ads or analytics (ML Kit telemetry is disabled). Export/delete everything from Settings. |
 
 ## StudIN V2 — Warm Academic
 
@@ -51,12 +51,27 @@ V1 → V2 comparison: [`docs/screenshots/v1_vs_v2.jpg`](docs/screenshots/v1_vs_v
 | 0 | Your allow/block keyword lists | `ContentClassifier` |
 | 1 | Normalised n-gram lexicon (English + Hinglish + Devanagari) + weights generated from **your** syllabus, calibrated with a logistic link. BLOCK only at high confidence with ≥ 2 signals; uncertain content is allowed. | `core/domain/.../classifier` |
 | Lite | Extractive flashcards, summarisation, BM25 retrieval, study planner | `core/domain/.../ai/LiteAi.kt` |
-| 2 (optional) | MediaPipe LLM Inference with a user-imported model (e.g. **Gemma 3 1B IT int4 `.task`**) on 64-bit phones with ≥ 4 GB RAM; power-aware | `app/.../ai/OnDeviceLlm.kt` |
+| 2 (optional) | MediaPipe LLM Inference with **Gemma 3 1B IT int4**, downloaded in-app from Hugging Face (pinned + SHA-256 verified) on 64-bit phones with ≥ 4 GB RAM; power-aware | `app/.../ai/OnDeviceLlm.kt`, `ModelDownloader.kt` |
 
-### Using the optional LLM
-1. On a computer or browser, download a MediaPipe-compatible model such as *Gemma 3 1B IT (int4) `.task`* from Kaggle or Hugging Face (LiteRT community) and copy it to your phone.
-2. In StudIN open **AI Tutor → Model → Import model** and pick the file. StudIN copies it to private storage and shows its SHA-256 so you can verify it.
-3. Chat, card generation and the content checker now use the model. Everything still runs offline; Lite AI is the automatic fallback.
+### Getting the full AI Tutor (Gemma 3 1B)
+Open **AI Tutor** → **Download AI Tutor** → confirm. StudIN downloads Google's
+`gemma3-1b-it-int4.task` (555 MB) from [`litert-community/Gemma3-1B-IT`](https://huggingface.co/litert-community/Gemma3-1B-IT)
+in the background (progress notification, resumes if interrupted), pins it to repository revision
+`a9bd856`, verifies its SHA-256 (`e3d981c0…`), installs it and switches the tutor to Gemma — after
+that it runs fully offline. Requires a 64-bit phone with ≥ 4 GB RAM.
+
+**Download key.** The Gemma repository is gated, so builds can bundle a Hugging Face *read* token
+(from an account that accepted the Gemma licence on that repository) for one-tap downloads:
+
+```properties
+# local.properties  (gitignored — never commit tokens: Hugging Face auto-revokes leaked ones)
+hf.token=hf_xxxxxxxxxxxxxxxxxxxxxxxx
+```
+or `-Pstudin.hfToken=…` / env `STUDIN_HF_TOKEN` in CI. Without one — or if the bundled token is
+revoked — the app guides students to use their own free Hugging Face account (accept licence →
+create Read token → paste). The token is only ever sent to `huggingface.co`, never to the CDN.
+Note: a token inside an APK can be extracted by anyone with the APK; use a fine-grained,
+read-only token you can rotate. Already have the file? **⋮ → Import model file**.
 
 ## Architecture
 

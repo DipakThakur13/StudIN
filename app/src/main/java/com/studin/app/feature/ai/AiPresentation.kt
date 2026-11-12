@@ -1,7 +1,6 @@
 package com.studin.app.feature.ai
 
 import com.studin.app.ai.LlmState
-import com.studin.domain.model.Verdict
 
 /** What the header badge says about the engine that will actually answer. Never over-claims. */
 enum class EngineStatusKind { LITE, INSTALLED, LOADING, READY, PROCESSING, ERROR }
@@ -73,20 +72,5 @@ fun formatReply(text: String): List<ReplyBlock> {
     return out
 }
 
-/** Human label for a classifier verdict – always paired with an icon in the UI. */
-fun verdictLabel(v: Verdict): String = when (v) {
-    Verdict.ALLOW -> "Study content – allowed"
-    Verdict.WARN -> "Possible distraction – gentle warning"
-    Verdict.BLOCK -> "Distraction – break screen"
-    Verdict.UNKNOWN -> "Not sure – allowed"
-}
 
-/** Short decision label for the Focus Guard history list. */
-fun decisionLabel(raw: String): String = when (runCatching { Verdict.valueOf(raw) }.getOrNull()) {
-    Verdict.ALLOW -> "Allowed"
-    Verdict.WARN -> "Warned"
-    Verdict.BLOCK -> "Gated"
-    Verdict.UNKNOWN, null -> "Unsure"
-}
-
-fun formatBytes(bytes: Long): String = if (bytes >= 1_000_000_000) String.format(java.util.Locale.US, "%.2f GB", bytes / 1e9) else "${bytes / 1_000_000} MB"
+fun formatBytes(bytes: Long): String = if (bytes >= 1_000_000_000) String.format(java.util.Locale.US, "%.2f GB", bytes / 1e9) else "${(bytes + 500_000) / 1_000_000} MB"

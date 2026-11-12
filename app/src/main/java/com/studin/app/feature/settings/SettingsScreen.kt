@@ -180,7 +180,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit, onBack: () -> Unit, vm: Setting
                 }) {
                     StudINWordmark(markSize = 36.dp)
                     Spacer(Modifier.height(Spacing.xs))
-                    Text("Version ${BuildConfig.VERSION_NAME} · offline-first · no internet permission",
+                    Text("Version ${BuildConfig.VERSION_NAME} · offline-first · nothing uploaded",
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }

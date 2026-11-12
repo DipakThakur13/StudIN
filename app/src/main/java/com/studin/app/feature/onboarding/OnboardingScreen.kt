@@ -399,9 +399,9 @@ private fun ReadyStep(state: OnboardingState, onStreaks: (Boolean) -> Unit) {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { notifGranted = it }
     StudINIllustration(R.drawable.ill_privacy, "A locked phone, an on-device chip and a crossed-out cloud", height = 160.dp)
     Spacer(Modifier.height(Spacing.lg))
-    StepHeader("Private by design", "StudIN works fully offline. Here's our promise:")
+    StepHeader("Private by design", "StudIN works offline. Here's our promise:")
     StudINCard(Modifier.fillMaxWidth()) {
-        Promise(Icons.Rounded.CloudOff, "No internet permission", "The app can't upload anything — your notes, chats and stats stay on this phone.")
+        Promise(Icons.Rounded.CloudOff, "Nothing is uploaded", "Your notes, chats and stats stay on this phone. The internet is used only if you choose to download the AI Tutor model.")
         Promise(Icons.Rounded.Memory, "On-device AI", "Classification, flashcards and the tutor run locally.")
         Promise(Icons.Rounded.ToggleOn, "You're in control", "Every permission is optional and can be turned off any time.")
         Promise(Icons.Rounded.EmergencyShare, "Never trapped", "Pause or end a session any time. Emergency calls and Settings are never blocked.", last = true)

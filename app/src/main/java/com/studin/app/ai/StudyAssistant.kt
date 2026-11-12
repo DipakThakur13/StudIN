@@ -128,10 +128,10 @@ class StudyAssistant @Inject constructor(
                     "• After the session, do 5 quick flashcards: active recall beats re-reading.\n" +
                     "• Sleep and water matter more than one extra hour.\n\nYou've got this. 💪"
             context.isNotEmpty() -> "From your own cards and syllabus:\n\n" + context.joinToString("\n") { "• $it" } +
-                "\n\nWant more depth? Import an on-device model in AI Tutor → Model for full explanations."
+                "\n\nWant more depth? Tap Download AI Tutor on the AI Tutor screen to get Gemma 3 1B for full explanations."
             else -> "I couldn't find this in your cards or syllabus yet.\n\n" +
                 "• Add notes in Study → Generate cards and I'll turn them into flashcards.\n" +
-                "• Import an on-device model (AI Tutor → Model) for open-ended explanations – it runs fully offline.\n\n" +
+                "• Download the full AI Tutor (Gemma 3 1B) on the AI Tutor screen for open-ended explanations – it then runs fully offline.\n\n" +
                 "Tip: ask me \"what should I study today?\" for a plan."
         }
     }

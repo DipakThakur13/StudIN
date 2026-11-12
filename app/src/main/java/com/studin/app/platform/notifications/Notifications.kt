@@ -13,11 +13,13 @@ object Notifications {
     const val CHANNEL_FOCUS = "focus_session"
     const val CHANNEL_REMINDERS = "study_reminders"
     const val CHANNEL_ALERTS = "focus_alerts"
+    const val CHANNEL_DOWNLOADS = "model_download"
 
     const val ID_FOCUS = 1001
     const val ID_REMINDER = 1002
     const val ID_BLOCKED = 1003
     const val ID_COMPLETE = 1004
+    const val ID_MODEL_DOWNLOAD = 1005
 
     fun createChannels(context: Context) {
         if (Build.VERSION.SDK_INT < 26) return
@@ -28,6 +30,9 @@ object Notifications {
             },
             NotificationChannel(CHANNEL_REMINDERS, context.getString(R.string.channel_reminders), NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = "Gentle daily study reminders"
+            },
+            NotificationChannel(CHANNEL_DOWNLOADS, "AI Tutor download", NotificationManager.IMPORTANCE_LOW).apply {
+                description = "Progress while the on-device AI Tutor model downloads"; setShowBadge(false)
             },
             NotificationChannel(CHANNEL_ALERTS, context.getString(R.string.channel_alerts), NotificationManager.IMPORTANCE_HIGH).apply {
                 description = "Shown when a blocked app is opened during focus"

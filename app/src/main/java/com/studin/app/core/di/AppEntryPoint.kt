@@ -1,5 +1,6 @@
 package com.studin.app.core.di
 
+import com.studin.app.ai.OnDeviceLlm
 import com.studin.app.core.data.prefs.UserPreferences
 import com.studin.app.core.data.repo.FocusRepository
 import com.studin.app.core.data.repo.ProfileRepository
@@ -18,4 +19,5 @@ interface AppEntryPoint {
     fun study(): StudyRepository
     fun focus(): FocusRepository
     fun focusController(): FocusController
+    fun onDeviceLlm(): OnDeviceLlm
 }

@@ -14,11 +14,13 @@ screen content, on a wide range of Indian Android phones (2–12 GB RAM).
   independent distraction signals**; otherwise WARN/UNKNOWN → allowed.
 * **Lite AI** – extractive flashcards, keyword extraction, summarisation and BM25
   retrieval over the student's own cards (`LiteAi`). Works on every device.
-* **Tier 2 (optional)** – MediaPipe LLM Inference with a user-imported quantised
-  model (recommended: Gemma 3 1B IT int4 `.task`). Only on 64-bit devices with
+* **Tier 2 (optional)** – MediaPipe LLM Inference with Gemma 3 1B IT int4 `.task`,
+  downloaded in-app from `litert-community/Gemma3-1B-IT` (pinned revision + SHA-256; gated
+  repo, so the user supplies a Hugging Face read token after accepting the Gemma licence), or
+  imported from a file. Only on 64-bit devices with
   ≥ 4 GB RAM, power-aware, used for tutor chat, card generation and UNKNOWN titles in
   the content checker. Never on the accessibility hot path (latency budget).
 
 ## Consequences
-The app never needs network access. The LLM is not required for the MVP and any
-failure falls back to Lite AI.
+Network access is used only for the optional model download (added in v2.1 at the product
+owner's request). The LLM is not required for the MVP and any failure falls back to Lite AI.

@@ -2,9 +2,15 @@
 
 _Last updated: 12 November 2026. Draft for review before Play submission._
 
-**Short version: everything stays on your phone.** StudIN does not request the
-`INTERNET` permission. It cannot upload your data, and it has no account, ads,
-trackers or analytics SDKs.
+**Short version: everything you study stays on your phone.** StudIN never uploads your
+data and has no account, ads, trackers or analytics SDKs (ML Kit's usage-log uploader is
+disabled at build time).
+
+The app uses the internet for **one thing only**: when you tap **Download AI Tutor**, it
+downloads Google's Gemma 3 1B model (555 MB) from Hugging Face. The download is authorised with
+StudIN's built-in read-only Hugging Face key (or, as a fallback, your own token). The key is sent
+only to `huggingface.co`; nothing about you or your studies is sent. Gemma is provided under and
+subject to the [Gemma Terms of Use](https://ai.google.dev/gemma/terms).
 
 ## What StudIN stores (on your device only)
 | Data | Why | Retention |
@@ -14,7 +20,7 @@ trackers or analytics SDKs.
 | Focus sessions (start/end, minutes, pauses, blocked attempts) | Timer, streaks, insights | Until you delete it |
 | Focus rules (app package + mode) | Focus Guard decisions | Until you delete it |
 | Classification decisions (verdict, confidence, matched keywords) | Explain decisions & improve your lists | 30 days. **Full titles are never stored.** |
-| Optional on-device AI model file you import | Tier-2 AI tutor | Until you delete it in AI Tutor → Model |
+| Optional AI Tutor model (downloaded or imported) | Tier-2 AI tutor | Until you remove it (AI Tutor → ⋮ → Remove) |
 
 ## Permissions
 | Permission | Used for | Required? |

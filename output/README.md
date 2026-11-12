@@ -31,11 +31,12 @@ adb install -r StudIN-v2.0.0-arm64.apk
    The break screen should appear with *Back to studying*, an earned break and an emergency exit.
 5. **Study** — review flashcards (tap to flip, grade), take a quiz, import a CSV, generate cards
    from notes or a photo (Study → AI cards).
-6. **AI Tutor** — try the four quick actions; *Content check* a few video titles.
-   Optional on-device LLM: AI Tutor → Model → import a MediaPipe `.task` model (e.g. Gemma 3 1B int4).
+6. **AI Tutor** — try the four quick actions, then tap **Download AI Tutor** → confirm. Gemma 3 1B
+   (555 MB) downloads in the background with a notification, is verified, and the tutor switches to it.
+   Wi-Fi recommended.
 7. **Insights** — switch 7D / 30D / 12W after a few sessions.
 
-StudIN has **no internet permission** — everything runs and stays on the phone.
+Nothing you study is uploaded. The only network use is the optional **Download AI Tutor** (Gemma 3 1B, 555 MB).
 
 ## Build it yourself
 ```bash

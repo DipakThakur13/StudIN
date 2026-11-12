@@ -24,3 +24,23 @@ Full V2 collection: `docs/screenshots/v2/<variant>/` (light, dark, compact, larg
 4. **Sub-48 dp chart/heatmap targets** — replaced with one tap surface per chart/row; values still announced per bar/day.
 5. **Low-contrast flashcard answer** — inherited `onSurfaceVariant`; now `onSurface`.
 6. **Truncated AI tab label / two-line buttons** at 360 dp — adaptive label and stacking thresholds.
+
+## v2.1 update — AI Tutor simplified + one-tap Gemma download
+At the product owner's request the AI Tutor is now a **single page**: the *Content check* and
+*Model* tabs were removed. The Tutor page shows a **Get the full AI Tutor** card with a
+**Download AI Tutor** button bound to the official `litert-community/Gemma3-1B-IT` repository:
+
+1. **One tap + confirm** when the build bundles a read token (injected from gitignored
+   `local.properties`); the confirmation carries the Gemma Terms of Use notice. Fallback (no bundled
+   token, or it's revoked): a sheet guides the student through Google's licence gate (accept the
+   Gemma licence → create a Hugging Face *Read* token → paste it). Tokens are validated first
+   (`whoami`, then the file) with specific errors for "wrong token" vs "licence not accepted".
+2. `ModelDownloadWorker` (WorkManager, data-sync foreground job with progress notification)
+   downloads `gemma3-1b-it-int4.task` pinned to revision `a9bd856…`, resumes with HTTP Range,
+   verifies size + SHA-256, installs it and switches the tutor to Gemma automatically.
+3. The card then shows "Gemma 3 1B is your AI Tutor". The ⋮ menu offers *Use Gemma*,
+   *Remove AI Tutor model* and *Import model file…*.
+
+Consequence: the app now declares `INTERNET` (used only by this download). ML Kit's usage-log
+uploader is disabled so no library can send data. The Focus Guard classifier still runs during
+focus sessions; only its test UI was removed.

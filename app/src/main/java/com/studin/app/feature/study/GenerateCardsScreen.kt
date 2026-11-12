@@ -172,10 +172,10 @@ private fun EngineCard(llm: LlmState, used: AiEngine?) {
     val (title, body) = when {
         used == AiEngine.LLM -> "On-device model" to "These cards were drafted by the model you imported. Check them before saving."
         used == AiEngine.LITE -> "StudIN Lite AI" to "These cards were extracted from definitions, formulas and key facts in your notes. Check them before saving."
-        llm is LlmState.Ready -> "On-device model ready" to "Your imported model (${llm.name}) drafts the cards. StudIN Lite AI is the automatic fallback."
-        llm is LlmState.Installed -> "On-device model installed" to "Your imported model (${llm.name}) loads when you generate (if enabled in AI Tutor). Lite AI is the fallback."
+        llm is LlmState.Ready -> "On-device model ready" to "Your on-device AI Tutor (${llm.name}) drafts the cards. StudIN Lite AI is the automatic fallback."
+        llm is LlmState.Installed -> "On-device model installed" to "Your AI Tutor model (${llm.name}) loads when you generate (if enabled in AI Tutor). Lite AI is the fallback."
         llm is LlmState.Loading -> "Loading on-device model…" to "Lite AI is used if the model isn't ready."
-        else -> "StudIN Lite AI" to "Finds definitions, formulas and key facts in your notes. Import a model in AI Tutor → Model for richer questions."
+        else -> "StudIN Lite AI" to "Finds definitions, formulas and key facts in your notes. Download the AI Tutor (Gemma) on the AI Tutor screen for richer questions."
     }
     val usesModel = used == AiEngine.LLM || (used == null && (llm is LlmState.Ready || llm is LlmState.Installed))
     StudINCard(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {

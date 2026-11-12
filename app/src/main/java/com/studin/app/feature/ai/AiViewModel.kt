@@ -5,15 +5,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.studin.app.ai.AiEngine
 import com.studin.app.ai.ChatTurn
-import com.studin.app.ai.ContentCheck
+import com.studin.app.ai.DownloadUi
+import com.studin.app.ai.ModelDownloads
 import com.studin.app.ai.ImportProgress
 import com.studin.app.ai.LlmState
 import com.studin.app.ai.OnDeviceLlm
 import com.studin.app.ai.StudyAssistant
-import com.studin.app.core.data.db.ClassificationDecisionEntity
 import com.studin.app.core.data.prefs.AppSettings
 import com.studin.app.core.data.prefs.UserPreferences
-import com.studin.app.core.data.repo.FocusRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +38,12 @@ data class ChatMessage(
     val prompt: String? = null,
 )
 
+sealed interface AccessCheck {
+    data object Idle : AccessCheck
+    data object Checking : AccessCheck
+    data class Error(val message: String) : AccessCheck
+}
+
 data class ModelUi(
     val importing: Boolean = false,
     val progress: ImportProgress? = null,
@@ -50,13 +55,63 @@ class AiViewModel @Inject constructor(
     private val assistant: StudyAssistant,
     private val llm: OnDeviceLlm,
     private val prefs: UserPreferences,
-    focus: FocusRepository,
+    private val downloads: ModelDownloads,
 ) : ViewModel() {
 
     val llmState: StateFlow<LlmState> = assistant.llmState
     val settings: StateFlow<AppSettings> = prefs.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())
-    val decisions: StateFlow<List<ClassificationDecisionEntity>> =
-        focus.observeDecisions(20).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** False on 32-bit or < 4 GB RAM phones: the Gemma download is not offered there. */
+    val deviceSupportsModel: Boolean = llm.deviceSupported()
+
+    // ---- Gemma download
+    val download: StateFlow<DownloadUi> = downloads.state.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DownloadUi.Idle)
+    private val _access = MutableStateFlow<AccessCheck>(AccessCheck.Idle)
+    /** Result of validating the Hugging Face token before the download starts. */
+    val access: StateFlow<AccessCheck> = _access.asStateFlow()
+
+    init {
+        // When a download finishes: forget the job (its input held the token) and warm the model up.
+        viewModelScope.launch {
+            download.collect { d ->
+                if (d is DownloadUi.Done) { downloads.clearFinished(); llm.refreshState(); llm.ensureLoaded() }
+            }
+        }
+    }
+
+    /** Check the token with Hugging Face, then start the background download. */
+    fun startDownload(token: String, onStarted: () -> Unit) {
+        if (_access.value == AccessCheck.Checking || token.isBlank()) return
+        _access.value = AccessCheck.Checking
+        viewModelScope.launch {
+            downloads.verifyAccess(token)
+                .onSuccess { downloads.start(token); _access.value = AccessCheck.Idle; onStarted() }
+                .onFailure { _access.value = AccessCheck.Error(it.message ?: "Couldn't reach Hugging Face. Check your connection.") }
+        }
+    }
+
+    /** One-tap download with the token bundled into this build; [onNeedsOwnToken] if it can't be used. */
+    fun startBundledDownload(onNeedsOwnToken: () -> Unit) {
+        val token = com.studin.app.ai.GemmaModel.bundledToken ?: return onNeedsOwnToken()
+        if (_access.value == AccessCheck.Checking) return
+        _access.value = AccessCheck.Checking
+        viewModelScope.launch {
+            downloads.verifyAccess(token)
+                .onSuccess { downloads.start(token); _access.value = AccessCheck.Idle }
+                .onFailure {
+                    // Bundled token revoked / not licensed: let the student use their own account instead.
+                    _access.value = AccessCheck.Error(
+                        if (it is com.studin.app.ai.DownloadFailure) "The built-in download key isn't working right now. You can use your own free Hugging Face account instead."
+                        else it.message ?: "Couldn't reach Hugging Face. Check your connection.",
+                    )
+                    if (it is com.studin.app.ai.DownloadFailure) onNeedsOwnToken()
+                }
+        }
+    }
+
+    fun resetAccess() { _access.value = AccessCheck.Idle }
+    fun cancelDownload() = downloads.cancel()
+    fun isMetered(): Boolean = downloads.isMetered()
 
     // ---- Tutor (kept in memory only)
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
@@ -114,31 +169,6 @@ class AiViewModel @Inject constructor(
     fun stop() { chatJob?.cancel() }
     fun clearChat() { chatJob?.cancel(); _messages.value = emptyList() }
 
-    // ---- Content check
-    private val _check = MutableStateFlow<ContentCheck?>(null)
-    val check: StateFlow<ContentCheck?> = _check.asStateFlow()
-    private val _checking = MutableStateFlow(false)
-    val checking: StateFlow<Boolean> = _checking.asStateFlow()
-
-    private val _checkedText = MutableStateFlow<String?>(null)
-    /** The exact text that produced [check] (shown back to the user). */
-    val checkedText: StateFlow<String?> = _checkedText.asStateFlow()
-    private val _checkError = MutableStateFlow<String?>(null)
-    val checkError: StateFlow<String?> = _checkError.asStateFlow()
-
-    fun checkTitle(title: String) {
-        val t = title.trim()
-        if (t.isEmpty() || _checking.value) return
-        viewModelScope.launch {
-            _checking.value = true
-            _checkError.value = null
-            runCatching { assistant.checkContent(t) }
-                .onSuccess { _check.value = it; _checkedText.value = t }
-                .onFailure { _checkError.value = it.message ?: "Couldn't check this title" }
-            _checking.value = false
-        }
-    }
-
     // ---- Model management
     private val _model = MutableStateFlow(ModelUi())
     val model: StateFlow<ModelUi> = _model.asStateFlow()
@@ -148,7 +178,8 @@ class AiViewModel @Inject constructor(
         viewModelScope.launch {
             _model.value = ModelUi(importing = true)
             val r = llm.importModel(uri) { p -> _model.update { it.copy(progress = p) } }
-            _model.value = ModelUi(message = r.fold({ "Model imported and verified (SHA-256 below)." }, { it.message ?: "Import failed" }))
+            _model.value = ModelUi(message = r.fold({ "Model imported. AI Tutor will use it." }, { it.message ?: "Import failed" }))
+            if (r.isSuccess) prefs.setUseLlm(true)
         }
     }
 

@@ -1,7 +1,6 @@
 package com.studin.app.feature.ai
 
 import com.studin.app.ai.LlmState
-import com.studin.domain.model.Verdict
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -60,11 +59,9 @@ class AiPresentationTest {
         assertEquals(listOf(ReplyBlock.Paragraph("-5 is negative")), formatReply("-5 is negative"))
     }
 
-    @Test fun verdictAndDecisionLabels() {
-        assertTrue(verdictLabel(Verdict.BLOCK).contains("break screen"))
-        assertEquals("Gated", decisionLabel("BLOCK"))
-        assertEquals("Unsure", decisionLabel("garbage"))
-        assertEquals("1.50 GB", formatBytes(1_500_000_000))
-        assertEquals("530 MB", formatBytes(530_000_000))
+    @Test fun downloadSizesAreHumanReadable() {
+        assertEquals("555 MB", formatBytes(554_661_243))
+        assertEquals("1.07 GB", formatBytes(1_073_765_694))
+        assertEquals("0 MB", formatBytes(0))
     }
 }

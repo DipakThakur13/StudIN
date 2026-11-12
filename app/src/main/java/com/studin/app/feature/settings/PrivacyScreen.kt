@@ -35,7 +35,8 @@ internal data class PolicySection(val title: String, val points: List<String>)
 
 internal val privacySections = listOf(
     PolicySection("Your data stays on your device", listOf(
-        "StudIN does not request the internet permission. It cannot send your data anywhere.",
+        "StudIN never uploads your data. Everything you study, plan, chat or track is processed and stored on this phone.",
+        "The app connects to the internet for one thing only: downloading the optional AI Tutor model (Gemma 3 1B) from Hugging Face when you tap Download.",
         "Profile, syllabus, flashcards, focus sessions and insights are stored in a private database inside the app.",
         "There are no ads, no analytics SDKs and no accounts.",
     )),
@@ -54,7 +55,8 @@ internal val privacySections = listOf(
     )),
     PolicySection("On-device AI", listOf(
         "Lite AI and the optional language model run entirely on your phone.",
-        "Model files are ones you import yourself; StudIN shows their SHA-256 checksum so you can verify them.",
+        "The AI Tutor model is downloaded from the LiteRT community repository on Hugging Face (where Google publishes Gemma for phones), pinned to a fixed version and checked against its published SHA-256 before use.",
+        "Downloading it needs your own free Hugging Face read token (Google requires accepting the Gemma licence). The token is sent only to huggingface.co to authorise that download and is cleared when it finishes. Your study data is never sent.",
         "Tutor chats are kept in memory only and disappear when you leave AI Tutor.",
     )),
     PolicySection("Retention", listOf(

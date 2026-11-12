@@ -43,7 +43,7 @@ data class ImportProgress(val copiedBytes: Long, val totalBytes: Long)
 /**
  * Optional Tier-2 on-device LLM (roadmap §4) powered by MediaPipe LLM Inference.
  * The student imports a quantised model file (e.g. Gemma 3 1B int4 `.task`) from
- * their own storage – nothing is downloaded by the app and nothing leaves the phone.
+ * their own storage, or downloads Gemma 3 1B via [ModelDownloads] – inference never sends anything off the phone.
  * Loaded lazily, power-aware, one generation at a time, unloaded on low memory.
  */
 @Singleton
