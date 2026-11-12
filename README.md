@@ -23,6 +23,14 @@ Kotlin · Jetpack Compose · Material 3 · Hilt · Room · DataStore · WorkMana
 | 📈 **Insights** | Weekly focus chart, 12-week consistency heatmap, quiz accuracy, review backlog, subject mastery, blocked attempts – with honest notes on what the numbers mean. |
 | 🔒 **Privacy** | The app removes the `INTERNET` permission. No accounts, ads, analytics or uploads. Export/delete everything from Settings. |
 
+## Screenshots
+
+<sub>Rendered from the real app (Hilt, Room, DataStore) by the Robolectric screenshot test `ScreenshotTour`.</sub>
+
+<p align="center"><img src="docs/screenshots/01_onboarding.jpg" width="23%" alt="onboarding"/> <img src="docs/screenshots/02_home.jpg" width="23%" alt="home"/> <img src="docs/screenshots/03_focus.jpg" width="23%" alt="focus"/> <img src="docs/screenshots/04_study.jpg" width="23%" alt="study"/></p>
+<p align="center"><img src="docs/screenshots/05_review.jpg" width="23%" alt="review"/> <img src="docs/screenshots/06_quiz.jpg" width="23%" alt="quiz"/> <img src="docs/screenshots/07_generate.jpg" width="23%" alt="generate"/> <img src="docs/screenshots/08_ai.jpg" width="23%" alt="ai"/></p>
+<p align="center"><img src="docs/screenshots/09_insights.jpg" width="23%" alt="insights"/> <img src="docs/screenshots/10_settings.jpg" width="23%" alt="settings"/> <img src="docs/screenshots/11_permissions.jpg" width="23%" alt="permissions"/> <img src="docs/screenshots/12_rules.jpg" width="23%" alt="rules"/></p>
+
 ## On-device AI tiers
 
 | Tier | What | Where |
@@ -63,6 +71,7 @@ Requirements: JDK 17+ and the Android SDK (platform 36).
 ./gradlew :core:domain:test        # domain unit tests
 ./gradlew :app:assembleDebug       # app/build/outputs/apk/debug/app-debug.apk
 ./gradlew :app:assembleRelease     # minified, signed with the debug key for testing
+./gradlew :app:testDebugUnitTest   # Robolectric screenshot tour → app/build/screenshots
 ```
 
 minSdk 26 · targetSdk 36.

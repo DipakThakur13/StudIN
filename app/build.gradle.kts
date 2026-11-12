@@ -48,6 +48,11 @@ android {
                 it.systemProperty("roborazzi.test.record", "true")
                 it.systemProperty("robolectric.graphicsMode", "NATIVE")
                 it.maxHeapSize = "3g"
+                // Optional mirror for Robolectric's android-all jars (e.g. -Probolectric.repo=https://…/maven2/)
+                (project.findProperty("robolectric.repo") as String?)?.let { repo ->
+                    it.systemProperty("robolectric.dependency.repo.url", repo)
+                    it.systemProperty("robolectric.dependency.repo.id", "mirror")
+                }
             }
         }
     }

@@ -87,7 +87,9 @@ fun GradientBackground(modifier: Modifier = Modifier, animate: Boolean = true, c
                 center = Offset(w * 0.3f, h * (0.95f - 0.1f * drift)), radius = w * 0.5f),
                 radius = w * 0.5f, center = Offset(w * 0.3f, h * (0.95f - 0.1f * drift)))
         }
-        content()
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onBackground,
+        ) { content() }
     }
 }
 

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -262,7 +263,7 @@ private fun SetupControls(
                 modifier = Modifier.weight(1f).padding(horizontal = 12.dp).semantics { contentDescription = "Session length $minutes minutes" },
                 colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary),
             )
-            Text("$minutes m", style = MonoNumbers)
+            Text("${minutes}m", style = MonoNumbers, modifier = Modifier.widthIn(min = 44.dp))
         }
         Spacer(Modifier.height(8.dp))
         GlassCard(Modifier.fillMaxWidth(), onClick = onPickTopic, contentPadding = 14.dp) {
