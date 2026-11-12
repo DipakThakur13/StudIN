@@ -16,11 +16,16 @@ android {
         applicationId = "com.studin.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "2.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
+        // Default: universal APK (phones + x86_64 emulators). Override for a smaller phone-only
+        // build: ./gradlew assembleRelease -Pstudin.abis=arm64-v8a
+        ndk {
+            abiFilters += ((project.findProperty("studin.abis") as String?)?.split(",")?.map { it.trim() }
+                ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64"))
+        }
     }
 
     buildTypes {

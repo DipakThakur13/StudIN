@@ -13,3 +13,6 @@ build/
 *.jks
 !debug.keystore
 .claude/
+
+# Built APKs for testing are published in output/
+!/output/*.apk
