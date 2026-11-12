@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StudIN</string>
+    <string name="accessibility_service_label">StudIN Focus Guard</string>
+    <string name="accessibility_service_description">StudIN Focus Guard runs only while you have a focus session running. It reads the name of the app in front of you and, for apps you set to Smart mode, the visible video or post titles on screen. Titles are classified on your phone and never uploaded or stored. If something looks off-syllabus, StudIN shows a break screen you can always skip. You can turn this off at any time in Settings → Accessibility.</string>
+    <string name="channel_focus">Focus session</string>
+    <string name="channel_reminders">Study reminders</string>
+    <string name="channel_alerts">Focus alerts</string>
+</resources>
