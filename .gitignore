@@ -16,3 +16,4 @@ build/
 
 # Built APKs for testing are published in output/
 !/output/*.apk
+.kotlin/
