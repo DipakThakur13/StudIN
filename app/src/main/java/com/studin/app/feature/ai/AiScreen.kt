@@ -3,20 +3,15 @@ package com.studin.app.feature.ai
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,382 +20,586 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.EventNote
+import androidx.compose.material.icons.automirrored.rounded.FactCheck
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.FactCheck
+import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material.icons.rounded.Quiz
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import android.content.ClipData
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalConfiguration
+import kotlinx.coroutines.launch
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.studin.app.R
 import com.studin.app.ai.AiEngine
 import com.studin.app.ai.ContentCheck
 import com.studin.app.ai.LlmState
 import com.studin.app.core.data.db.ClassificationDecisionEntity
-import com.studin.app.core.designsystem.Badge
-import com.studin.app.core.designsystem.GhostButton
-import com.studin.app.core.designsystem.GlassCard
-import com.studin.app.core.designsystem.GradientButton
-import com.studin.app.core.designsystem.GradientProgressBar
-import com.studin.app.core.designsystem.IconBubble
-import com.studin.app.core.designsystem.Pill
-import com.studin.app.core.designsystem.SectionHeader
-import com.studin.app.core.designsystem.Studin
-import com.studin.app.core.designsystem.StudinColors
-import com.studin.app.ui.navigation.BottomBarPadding
+import com.studin.app.core.designsystem.Motion
+import com.studin.app.core.designsystem.Spacing
+import com.studin.app.core.designsystem.StudINBadge
+import com.studin.app.core.designsystem.StudINCard
+import com.studin.app.core.designsystem.StudINChip
+import com.studin.app.core.designsystem.StudINDialog
+import com.studin.app.core.designsystem.StudINErrorState
+import com.studin.app.core.designsystem.StudINIconButton
+import com.studin.app.core.designsystem.StudINIconTile
+import com.studin.app.core.designsystem.StudINIllustration
+import com.studin.app.core.designsystem.StudINLinearProgress
+import com.studin.app.core.designsystem.StudINOutlinedButton
+import com.studin.app.core.designsystem.StudINPrimaryButton
+import com.studin.app.core.designsystem.StudINScaffold
+import com.studin.app.core.designsystem.StudINSectionHeader
+import com.studin.app.core.designsystem.StudINSegmentedTabs
+import com.studin.app.core.designsystem.StudINShapes
+import com.studin.app.core.designsystem.StudINTextButton
+import com.studin.app.core.designsystem.StudINTextField
+import com.studin.app.core.designsystem.StudINTheme
+import com.studin.app.core.designsystem.motionDuration
+import com.studin.app.core.designsystem.screenContentPadding
+import com.studin.app.core.designsystem.studinContentWidth
+import com.studin.app.ui.navigation.Routes
 import com.studin.domain.model.Verdict
 import java.text.DateFormat
 import java.util.Date
 
-private enum class AiTab(val label: String) { TUTOR("Tutor"), CHECK("Content check"), MODEL("Model") }
+private enum class AiTab(val label: String, val icon: ImageVector) {
+    TUTOR("Tutor", Icons.Rounded.Psychology), CHECK("Content check", Icons.AutoMirrored.Rounded.FactCheck), MODEL("Model", Icons.Rounded.Memory)
+}
 
 @Composable
 fun AiScreen(onNavigate: (String) -> Unit, vm: AiViewModel = hiltViewModel()) {
     val llm by vm.llmState.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val thinking by vm.thinking.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    val llmActive = settings.aiUseLlm && (llm is LlmState.Ready || llm is LlmState.Installed)
+    val status = engineStatus(llm, settings.aiUseLlm, thinking)
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("AI Tutor", style = MaterialTheme.typography.headlineMedium)
-                Text("Private. Offline. On your phone.", style = MaterialTheme.typography.bodyMedium, color = Studin.extras.muted)
-            }
-            EngineStatusPill(llm, llmActive)
-        }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AiTab.entries.forEachIndexed { i, t ->
-                Pill(t.label, tab == i, { tab = i }, icon = when (t) {
-                    AiTab.TUTOR -> Icons.Rounded.Psychology; AiTab.CHECK -> Icons.Rounded.FactCheck; AiTab.MODEL -> Icons.Rounded.Memory
-                })
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        AnimatedContent(tab, label = "tab", transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) }, modifier = Modifier.weight(1f)) { t ->
-            when (AiTab.entries[t]) {
-                AiTab.TUTOR -> TutorTab(vm)
-                AiTab.CHECK -> CheckTab(vm)
-                AiTab.MODEL -> ModelTab(vm, llm, settings.aiUseLlm, settings.aiModelSha256)
+    StudINScaffold(
+        title = "AI Tutor",
+        subtitle = "Your personal, offline study assistant",
+        actions = { EngineBadge(status); Spacer(Modifier.width(Spacing.md)) },
+    ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            // Shorter label when the effective width (dp ÷ font scale) can't fit "Content check".
+            val config = LocalConfiguration.current
+            val compactTabs = config.screenWidthDp / config.fontScale < 340f
+            StudINSegmentedTabs(
+                options = AiTab.entries.map { if (compactTabs && it == AiTab.CHECK) "Check" else it.label }, selectedIndex = tab, onSelect = { tab = it },
+                modifier = Modifier.studinContentWidth().padding(horizontal = Spacing.screen),
+            )
+            Spacer(Modifier.height(Spacing.xs))
+            val ms = motionDuration(Motion.card)
+            AnimatedContent(tab, label = "aiTab", transitionSpec = { fadeIn(tween(ms)) togetherWith fadeOut(tween(ms / 2)) }, modifier = Modifier.weight(1f)) { t ->
+                when (AiTab.entries[t]) {
+                    AiTab.TUTOR -> TutorTab(vm, onNavigate)
+                    AiTab.CHECK -> CheckTab(vm)
+                    AiTab.MODEL -> ModelTab(vm, llm, settings.aiUseLlm, settings.aiModelSha256, thinking)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun EngineStatusPill(llm: LlmState, active: Boolean) {
-    val (label, color) = when {
-        active && llm is LlmState.Ready -> "LLM ready" to StudinColors.Mint
-        active && llm is LlmState.Installed -> "LLM on demand" to StudinColors.Cyan
-        llm is LlmState.Loading -> "Loading…" to StudinColors.Star
-        else -> "Lite AI" to StudinColors.Violet
+private fun EngineBadge(status: EngineStatus) {
+    val c = StudINTheme.colors
+    val (container, content, icon) = when (status.kind) {
+        EngineStatusKind.READY, EngineStatusKind.PROCESSING -> Triple(c.successContainer, c.success, Icons.Rounded.CheckCircle)
+        EngineStatusKind.LOADING, EngineStatusKind.INSTALLED -> Triple(c.aiContainer, c.ai, Icons.Rounded.Memory)
+        EngineStatusKind.ERROR -> Triple(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer, Icons.Rounded.ErrorOutline)
+        EngineStatusKind.LITE -> Triple(c.aiContainer, c.ai, Icons.Rounded.AutoAwesome)
     }
-    val pulse = rememberInfiniteTransition(label = "p").animateFloat(0.4f, 1f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "pa")
-    Row(
-        Modifier.clip(CircleShape).background(color.copy(alpha = 0.14f)).border(1.dp, color.copy(alpha = 0.4f), CircleShape)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(8.dp).alpha(pulse.value).clip(CircleShape).background(color))
-        Spacer(Modifier.width(6.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = color)
-    }
+    StudINBadge(
+        status.label, container = container, content = content, icon = icon,
+        modifier = Modifier.semantics { contentDescription = "AI engine: ${status.label}. ${status.detail}" },
+    )
 }
 
 // ------------------------------------------------------------------ Tutor
 
+private data class QuickAction(val title: String, val supporting: String, val icon: ImageVector)
+
 @Composable
-private fun TutorTab(vm: AiViewModel) {
+private fun TutorTab(vm: AiViewModel, onNavigate: (String) -> Unit) {
     val messages by vm.messages.collectAsStateWithLifecycle()
     val thinking by vm.thinking.collectAsStateWithLifecycle()
     var input by rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val focus = remember { FocusRequester() }
+    var requestFocus by remember { mutableStateOf(false) }
+    val reduced = StudINTheme.reducedMotion
+    val padding = screenContentPadding(PaddingValues(), top = Spacing.xs, bottom = Spacing.md)
+
     LaunchedEffect(messages.size, messages.lastOrNull()?.text?.length) {
-        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size)
+        if (messages.isNotEmpty()) {
+            val last = listState.layoutInfo.totalItemsCount - 1
+            if (last >= 0) { if (reduced) listState.scrollToItem(last) else listState.animateScrollToItem(last) }
+        }
     }
+    LaunchedEffect(requestFocus) { if (requestFocus) { runCatching { focus.requestFocus() }; requestFocus = false } }
+
+    fun prefill(text: String) { input = text; requestFocus = true }
+    fun submit() { if (input.isNotBlank() && !thinking) { vm.send(input); input = "" } }
+
     Column(Modifier.fillMaxSize().imePadding()) {
         LazyColumn(
-            Modifier.weight(1f).fillMaxWidth(), state = listState,
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
+            Modifier.weight(1f).studinContentWidth(), state = listState,
+            contentPadding = padding, verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
-            item(key = "intro") {
-                if (messages.isEmpty()) {
-                    GlassCard(Modifier.fillMaxWidth()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconBubble(Icons.Rounded.AutoAwesome, StudinColors.Mint, 48.dp)
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text("Hi! I'm your study buddy.", style = MaterialTheme.typography.titleMedium)
-                                Text("I use your own flashcards and syllabus. Chats stay in memory and vanish when you leave.",
-                                    style = MaterialTheme.typography.bodySmall, color = Studin.extras.muted)
+            if (messages.isEmpty()) {
+                item(key = "intro") { TutorIntro() }
+                item(key = "qa-header") { StudINSectionHeader("Quick actions", Modifier.padding(top = Spacing.xs)) }
+                item(key = "qa") {
+                    val actions = listOf(
+                        QuickAction("Explain a topic", "Get a clear, simple explanation", Icons.AutoMirrored.Rounded.MenuBook) to { prefill("Explain ") },
+                        QuickAction("Quiz me", "Practise with MCQs from your cards", Icons.Rounded.Quiz) to { onNavigate(Routes.quiz()) },
+                        QuickAction("Summarise notes", "Paste notes, get the key points", Icons.Rounded.Description) to { prefill("Summarise these notes:\n") },
+                        QuickAction("Plan my revision", "An advisory plan for today", Icons.AutoMirrored.Rounded.EventNote) to { vm.send("What should I study today?") },
+                    )
+                    val accents = listOf(MaterialTheme.colorScheme.primary, StudINTheme.colors.accent, StudINTheme.colors.ai, StudINTheme.colors.success)
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                        actions.chunked(2).forEachIndexed { row, pair ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                                pair.forEachIndexed { col, (a, onClick) ->
+                                    QuickActionCard(a, accents[row * 2 + col], onClick, Modifier.weight(1f))
+                                }
                             }
                         }
                     }
-                } else {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        GhostButton("Clear chat", vm::clearChat, icon = Icons.Rounded.DeleteSweep)
+                }
+                item(key = "privacy") {
+                    Text(
+                        "Chats stay in memory on this phone and are cleared when you leave AI Tutor.",
+                        style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
+                        modifier = Modifier.padding(top = Spacing.xs),
+                    )
+                }
+            } else {
+                item(key = "conv-header") {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Conversation", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f).semantics { heading() })
+                        StudINTextButton("Clear", vm::clearChat, icon = Icons.Rounded.DeleteSweep)
+                    }
+                }
+                items(messages, key = { it.id }) { m ->
+                    if (m.fromUser) UserBubble(m) else TutorBubble(m, onRetry = { vm.retry(m.id) }, canRetry = !thinking)
+                }
+            }
+        }
+        HorizontalDivider(color = StudINTheme.colors.border)
+        Row(
+            Modifier.studinContentWidth().padding(horizontal = Spacing.screen, vertical = Spacing.xs),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            StudINTextField(
+                value = input, onValueChange = { input = it.take(2_000) },
+                modifier = Modifier.weight(1f).focusRequester(focus),
+                placeholder = "Ask anything, or paste notes to summarise…",
+                singleLine = false, maxLines = 4, imeAction = ImeAction.Send, onImeAction = ::submit,
+            )
+            Spacer(Modifier.width(Spacing.xs))
+            if (thinking) {
+                FilledIconButton(
+                    onClick = vm::stop, modifier = Modifier.padding(bottom = 4.dp).size(Spacing.touchTarget), shape = StudINShapes.button,
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = StudINTheme.colors.surfaceSecondary, contentColor = MaterialTheme.colorScheme.onSurface),
+                ) { Icon(Icons.Rounded.Stop, contentDescription = "Stop generating") }
+            } else {
+                FilledIconButton(
+                    onClick = ::submit, enabled = input.isNotBlank(), modifier = Modifier.padding(bottom = 4.dp).size(Spacing.touchTarget),
+                    shape = StudINShapes.button,
+                ) { Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TutorIntro() {
+    val config = LocalConfiguration.current
+    val compact = config.screenWidthDp / config.fontScale < 340f
+    StudINCard(Modifier.fillMaxWidth(), containerColor = StudINTheme.colors.surfaceSecondary, border = null) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StudINIllustration(
+                R.drawable.ill_ai_tutor, contentDescription = null, backdrop = false,
+                modifier = Modifier.width(if (compact) 84.dp else 124.dp), height = if (compact) 72.dp else 104.dp,
+            )
+            Spacer(Modifier.width(Spacing.sm))
+            Column(Modifier.weight(1f)) {
+                Text("Hi! I'm your study buddy.", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+                Spacer(Modifier.height(Spacing.xxs))
+                Text(
+                    if (compact) "Ask, summarise or plan – answered from your own cards and syllabus."
+                    else "Ask about a concept, summarise your notes or plan revision. I answer from your own cards and syllabus – and from your imported model, if you add one.",
+                    style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickActionCard(a: QuickAction, accent: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    StudINCard(modifier.heightIn(min = 104.dp), onClick = onClick, contentPadding = PaddingValues(Spacing.sm + 2.dp), onClickLabel = a.title) {
+        StudINIconTile(a.icon, accent, 36.dp)
+        Spacer(Modifier.height(Spacing.xs))
+        Text(a.title, style = MaterialTheme.typography.titleSmall)
+        Text(a.supporting, style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary)
+    }
+}
+
+@Composable
+private fun UserBubble(m: ChatMessage) {
+    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+        Surface(
+            modifier = Modifier.widthIn(max = maxWidth * 0.85f),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 4.dp),
+            color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ) {
+            SelectionContainer {
+                Text(m.text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = Spacing.sm + 2.dp, vertical = Spacing.xs + 2.dp)
+                    .semantics { contentDescription = "You: ${m.text}" })
+            }
+        }
+    }
+}
+
+@Composable
+private fun TutorBubble(m: ChatMessage, onRetry: () -> Unit, canRetry: Boolean) {
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+        Column(Modifier.widthIn(max = maxWidth * 0.92f)) {
+            when {
+                m.failed -> StudINErrorState("Couldn't answer: ${m.text}", onRetry = if (canRetry && m.prompt != null) onRetry else null)
+                m.streaming && m.text.isEmpty() -> ThinkingRow()
+                else -> Surface(
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 4.dp, bottomEnd = 16.dp),
+                    color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, StudINTheme.colors.border),
+                ) {
+                    Column(Modifier.padding(start = Spacing.sm + 2.dp, end = Spacing.xxs, top = Spacing.sm, bottom = Spacing.xxs)) {
+                        SelectionContainer(Modifier.padding(end = Spacing.sm)
+                            .then(if (!m.streaming) Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier)) {
+                            ReplyText(m.text)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            m.engine?.let {
+                                StudINBadge(
+                                    if (it == AiEngine.LLM) "On-device model" else "Lite AI",
+                                    container = StudINTheme.colors.aiContainer, content = StudINTheme.colors.ai,
+                                )
+                            }
+                            if (m.streaming) {
+                                Spacer(Modifier.width(Spacing.xs))
+                                Text("Writing…", style = MaterialTheme.typography.labelMedium, color = StudINTheme.colors.textSecondary)
+                            }
+                            Spacer(Modifier.weight(1f))
+                            if (!m.streaming) {
+                                StudINIconButton(Icons.Rounded.ContentCopy, "Copy reply", { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("StudIN reply", m.text))) } },
+                                    tint = StudINTheme.colors.textSecondary)
+                            } else Spacer(Modifier.height(Spacing.touchTarget))
+                        }
                     }
                 }
             }
-            items(messages, key = { it.id }) { m -> ChatBubble(m) }
-        }
-        if (messages.isEmpty()) {
-            Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("What should I study today?", "Explain Coulomb's law", "Quiz me tips", "I can't focus").forEach {
-                    Pill(it, false, { vm.send(it) })
-                }
-            }
-        }
-        Row(
-            Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 0.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = input, onValueChange = { input = it.take(2000) },
-                modifier = Modifier.weight(1f), placeholder = { Text("Ask anything, or paste notes to summarise") },
-                shape = RoundedCornerShape(22.dp), maxLines = 4,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { vm.send(input); input = "" }),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Studin.extras.glass, unfocusedContainerColor = Studin.extras.glass,
-                    focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
-                ),
-            )
-            Spacer(Modifier.width(8.dp))
-            Box(
-                Modifier.size(52.dp).clip(CircleShape).background(Studin.extras.heroGradient),
-                contentAlignment = Alignment.Center,
-            ) {
-                IconButton(onClick = { if (thinking) vm.stop() else { vm.send(input); input = "" } }) {
-                    Icon(if (thinking) Icons.Rounded.Stop else Icons.AutoMirrored.Rounded.Send, contentDescription = if (thinking) "Stop" else "Send", tint = StudinColors.Navy950)
-                }
-            }
         }
     }
 }
 
 @Composable
-private fun ChatBubble(m: ChatMessage) {
-    val shape = if (m.fromUser) RoundedCornerShape(20.dp, 20.dp, 6.dp, 20.dp) else RoundedCornerShape(20.dp, 20.dp, 20.dp, 6.dp)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (m.fromUser) Arrangement.End else Arrangement.Start) {
-        Column(
-            Modifier.widthIn(max = 320.dp).clip(shape)
-                .then(
-                    if (m.fromUser) Modifier.background(Studin.extras.heroGradient)
-                    else Modifier.background(Studin.extras.glass).border(1.dp, Studin.extras.glassBorder, shape)
+private fun ThinkingRow() {
+    Row(
+        Modifier.background(StudINTheme.colors.surfaceSecondary, StudINShapes.smallCard).padding(horizontal = Spacing.sm, vertical = Spacing.sm)
+            .semantics { contentDescription = "Tutor is thinking"; liveRegion = LiveRegionMode.Polite },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = StudINTheme.colors.ai)
+        Spacer(Modifier.width(Spacing.xs))
+        Text("Thinking…", style = MaterialTheme.typography.bodyMedium, color = StudINTheme.colors.textSecondary)
+    }
+}
+
+/** Renders paragraphs, bullets, numbered items and code blocks from [formatReply]. */
+@Composable
+private fun ReplyText(text: String) {
+    val blocks = remember(text) { formatReply(text) }
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        blocks.forEach { b ->
+            when (b) {
+                is ReplyBlock.Paragraph -> Text(b.text, style = MaterialTheme.typography.bodyMedium)
+                is ReplyBlock.Bullet -> Row {
+                    Box(Modifier.padding(top = 8.dp).size(5.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                    Spacer(Modifier.width(Spacing.xs))
+                    Text(b.text, style = MaterialTheme.typography.bodyMedium)
+                }
+                is ReplyBlock.Numbered -> Row {
+                    Text("${b.number}.", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(22.dp))
+                    Text(b.text, style = MaterialTheme.typography.bodyMedium)
+                }
+                is ReplyBlock.Code -> Text(
+                    b.text,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.fillMaxWidth().background(StudINTheme.colors.surfaceSecondary, StudINShapes.badge).padding(Spacing.xs),
                 )
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-                .animateContentSize(),
-        ) {
-            if (!m.fromUser && m.streaming && m.text.isEmpty()) TypingDots()
-            else SelectionContainer {
-                Text(m.text, style = MaterialTheme.typography.bodyMedium, color = if (m.fromUser) StudinColors.Navy950 else MaterialTheme.colorScheme.onSurface)
             }
-            if (!m.fromUser && m.engine != null && !m.streaming) {
-                Spacer(Modifier.height(6.dp))
-                Badge(m.engine.label, if (m.engine == AiEngine.LLM) StudinColors.Mint else StudinColors.Violet)
-            }
-        }
-    }
-}
-
-@Composable
-private fun TypingDots() {
-    val t = rememberInfiniteTransition(label = "dots")
-    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.padding(vertical = 6.dp)) {
-        repeat(3) { i ->
-            val a by t.animateFloat(0.25f, 1f, infiniteRepeatable(tween(600, delayMillis = i * 150), RepeatMode.Reverse), label = "d$i")
-            Box(Modifier.size(8.dp).alpha(a).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
         }
     }
 }
 
 // ------------------------------------------------------------------ Content check
 
+private val samples = listOf(
+    "Kinematics One Shot | JEE Physics",
+    "BGMI funny moments gameplay",
+    "Polity lecture: Fundamental Rights",
+    "Physics in GTA 5 explained",
+    "रसायन अध्याय 3 व्याख्यान",
+    "Sunday vlog",
+)
+
 @Composable
 private fun CheckTab(vm: AiViewModel) {
     val result by vm.check.collectAsStateWithLifecycle()
+    val checkedText by vm.checkedText.collectAsStateWithLifecycle()
     val checking by vm.checking.collectAsStateWithLifecycle()
+    val error by vm.checkError.collectAsStateWithLifecycle()
     val decisions by vm.decisions.collectAsStateWithLifecycle()
     var title by rememberSaveable { mutableStateOf("") }
     LazyColumn(
-        Modifier.fillMaxSize().imePadding(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = BottomBarPadding),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        Modifier.fillMaxSize().imePadding().studinContentWidth(),
+        contentPadding = screenContentPadding(PaddingValues()),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         item {
-            GlassCard(Modifier.fillMaxWidth()) {
-                Text("How Smart mode decides", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                TierLine("Tier 0", "Your allow / block lists – always win")
-                TierLine("Tier 1", "Syllabus-aware lexicon with Hindi–English terms (<1 ms)")
-                TierLine("Tier 2", "Optional on-device LLM for unclear titles (advisory only)")
-                Spacer(Modifier.height(6.dp))
-                Text("BLOCK only happens at high confidence. When unsure, StudIN allows.",
-                    style = MaterialTheme.typography.bodySmall, color = Studin.extras.muted)
+            StudINCard(Modifier.fillMaxWidth()) {
+                Text("Test what Focus Guard would do", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+                Spacer(Modifier.height(Spacing.xxs))
+                Text(
+                    "Paste a video or post title. StudIN classifies it on this phone with the same rules Smart mode uses.",
+                    style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
+                )
+                Spacer(Modifier.height(Spacing.sm))
+                StudINTextField(
+                    value = title, onValueChange = { title = it.take(300) }, label = "Video or post title",
+                    imeAction = ImeAction.Search, onImeAction = { vm.checkTitle(title) },
+                    leadingIcon = { Icon(Icons.Rounded.Search, null) },
+                )
+                Spacer(Modifier.height(Spacing.sm))
+                StudINPrimaryButton("Check title", { vm.checkTitle(title) }, Modifier.fillMaxWidth(), icon = Icons.AutoMirrored.Rounded.FactCheck,
+                    enabled = title.isNotBlank(), loading = checking)
+                Spacer(Modifier.height(Spacing.sm))
+                Text("Try an example", style = MaterialTheme.typography.labelLarge, color = StudINTheme.colors.textSecondary)
+                Spacer(Modifier.height(Spacing.xs))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                    samples.forEach { s -> StudINChip(s, onClick = { title = s; vm.checkTitle(s) }) }
+                }
             }
         }
-        item {
-            OutlinedTextField(
-                value = title, onValueChange = { title = it.take(300) }, modifier = Modifier.fillMaxWidth(),
-                label = { Text("Video or post title") }, shape = RoundedCornerShape(18.dp), singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { vm.checkTitle(title) }),
-                trailingIcon = {
-                    if (checking) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else IconButton(onClick = { vm.checkTitle(title) }) { Icon(Icons.Rounded.Search, "Check") }
-                },
-            )
-            Spacer(Modifier.height(8.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    "Kinematics One Shot | JEE Physics",
-                    "BGMI funny moments gameplay",
-                    "Polity lecture: Fundamental Rights",
-                    "Physics in GTA 5 explained",
-                    "रसायन अध्याय 3 व्याख्यान",
-                    "Sunday vlog",
-                ).forEach { s -> Pill(s, false, { title = s; vm.checkTitle(s) }) }
-            }
-        }
-        item { result?.let { VerdictCard(it) } }
-        item { SectionHeader("Recent Focus Guard decisions") }
+        error?.let { e -> item { StudINErrorState(e, onRetry = { vm.checkTitle(title) }) } }
+        result?.let { r -> item(key = "verdict") { VerdictCard(r, checkedText.orEmpty()) } }
+        item { HowItDecides() }
+        item { StudINSectionHeader("Recent Focus Guard decisions", Modifier.padding(top = Spacing.xs), supporting = "Titles are never stored – only the matched keywords") }
         if (decisions.isEmpty()) {
             item {
-                Text("No decisions yet. They appear here when Focus Guard checks Smart-mode apps during a session (titles are never stored).",
-                    style = MaterialTheme.typography.bodySmall, color = Studin.extras.muted)
+                Text(
+                    "No decisions yet. They appear here when Focus Guard checks Smart-mode apps during a focus session.",
+                    style = MaterialTheme.typography.bodyMedium, color = StudINTheme.colors.textSecondary,
+                )
+            }
+        } else {
+            item {
+                StudINCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = Spacing.xxs)) {
+                    decisions.forEachIndexed { i, d ->
+                        if (i > 0) HorizontalDivider(color = StudINTheme.colors.border, modifier = Modifier.padding(horizontal = Spacing.card))
+                        DecisionRow(d)
+                    }
+                }
             }
         }
-        items(decisions, key = { it.id }) { DecisionRow(it) }
+    }
+}
+
+@Composable
+private fun HowItDecides() {
+    StudINCard(Modifier.fillMaxWidth(), containerColor = StudINTheme.colors.surfaceSecondary, border = null) {
+        Text("How Smart mode decides", style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+        Spacer(Modifier.height(Spacing.xs))
+        TierLine("Tier 0", "Your allow / block keyword lists always win")
+        TierLine("Tier 1", "Syllabus-aware lexicon with Hindi–English terms")
+        TierLine("Tier 2", "Optional on-device model for unclear titles (advisory only)")
+        Spacer(Modifier.height(Spacing.xxs))
+        Text("A break screen only appears at high confidence. When unsure, StudIN allows.",
+            style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary)
     }
 }
 
 @Composable
 private fun TierLine(tier: String, text: String) {
     Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-        Badge(tier, StudinColors.Cyan)
-        Spacer(Modifier.width(10.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium)
+        StudINBadge(tier, container = MaterialTheme.colorScheme.surface)
+        Spacer(Modifier.width(Spacing.xs))
+        Text(text, style = MaterialTheme.typography.bodySmall)
     }
 }
 
-private fun verdictColor(v: Verdict): Color = when (v) {
-    Verdict.ALLOW -> StudinColors.Mint
-    Verdict.WARN -> StudinColors.Star
-    Verdict.BLOCK -> StudinColors.Coral
-    Verdict.UNKNOWN -> StudinColors.InkMuted
+private data class VerdictStyle(val icon: ImageVector, val container: Color, val content: Color)
+
+@Composable
+private fun verdictStyle(v: Verdict): VerdictStyle {
+    val c = StudINTheme.colors
+    return when (v) {
+        Verdict.ALLOW -> VerdictStyle(Icons.Rounded.CheckCircle, c.successContainer, c.success)
+        Verdict.WARN -> VerdictStyle(Icons.Rounded.Warning, c.warningContainer, c.warning)
+        Verdict.BLOCK -> VerdictStyle(Icons.Rounded.Shield, MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.error)
+        Verdict.UNKNOWN -> VerdictStyle(Icons.AutoMirrored.Rounded.HelpOutline, c.surfaceSecondary, c.textSecondary)
+    }
 }
 
 @Composable
-private fun VerdictCard(c: ContentCheck) {
+private fun VerdictCard(c: ContentCheck, evaluated: String) {
     val r = c.result
-    val color = verdictColor(r.verdict)
-    GlassCard(Modifier.fillMaxWidth(), highlight = true) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconBubble(
-                when (r.verdict) { Verdict.ALLOW -> Icons.Rounded.CheckCircle; Verdict.BLOCK -> Icons.Rounded.Shield; Verdict.WARN -> Icons.Rounded.Warning; Verdict.UNKNOWN -> Icons.Rounded.Psychology },
-                color, 52.dp,
-            )
-            Spacer(Modifier.width(14.dp))
+    val style = verdictStyle(r.verdict)
+    StudINCard(Modifier.fillMaxWidth()) {
+        Text("Evaluated", style = MaterialTheme.typography.labelMedium, color = StudINTheme.colors.textSecondary)
+        Text("“$evaluated”", style = MaterialTheme.typography.bodyLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(Spacing.sm))
+        Row(
+            Modifier.fillMaxWidth().background(style.container, StudINShapes.smallCard).padding(Spacing.sm)
+                .semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(style.icon, contentDescription = null, tint = style.content)
+            Spacer(Modifier.width(Spacing.xs))
             Column(Modifier.weight(1f)) {
-                Text(r.verdict.name, style = MaterialTheme.typography.headlineSmall, color = color)
-                Text(r.reason, style = MaterialTheme.typography.bodySmall, color = Studin.extras.muted)
+                Text(verdictLabel(r.verdict), style = MaterialTheme.typography.titleSmall, color = style.content)
+                Text(r.reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
             }
         }
-        Spacer(Modifier.height(14.dp))
-        MeterRow("Confidence", r.confidence.toFloat(), color)
-        Spacer(Modifier.height(10.dp))
-        MeterRow("Study probability", r.studyProbability.toFloat(), StudinColors.Cyan)
-        Spacer(Modifier.height(12.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            r.syllabusMatches.forEach { Badge("syllabus · $it", StudinColors.Mint) }
-            r.studySignals.forEach { Badge("study · $it", StudinColors.Cyan) }
-            r.distractionSignals.forEach { Badge("distraction · $it", StudinColors.Coral) }
+        Spacer(Modifier.height(Spacing.sm))
+        if (r.confidence > 0.0) {
+            MeterRow("Confidence in this verdict", r.confidence.toFloat(), style.content)
+            Spacer(Modifier.height(Spacing.xs))
         }
-        Spacer(Modifier.height(10.dp))
-        Text("Tier ${r.tier} · ${c.engine.label} · ${c.latencyMs} ms · ${r.ruleVersion}",
-            style = MaterialTheme.typography.labelSmall, color = Studin.extras.muted)
+        MeterRow("Looks like study material", r.studyProbability.toFloat(), MaterialTheme.colorScheme.primary)
+        val signals = r.syllabusMatches.map { "Syllabus: $it" } + r.studySignals.map { "Study: $it" } + r.distractionSignals.map { "Distraction: $it" }
+        if (signals.isNotEmpty()) {
+            Spacer(Modifier.height(Spacing.sm))
+            Text("Signals found", style = MaterialTheme.typography.labelLarge, color = StudINTheme.colors.textSecondary)
+            Spacer(Modifier.height(Spacing.xxs))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xxs + 2.dp), verticalArrangement = Arrangement.spacedBy(Spacing.xxs + 2.dp)) {
+                signals.forEach { StudINBadge(it) }
+            }
+        }
+        Spacer(Modifier.height(Spacing.sm))
+        Text(
+            "Tier ${r.tier} · ${if (c.engine == AiEngine.LLM) "On-device model" else "Lite AI"} · ${c.latencyMs} ms · ${r.ruleVersion}",
+            style = MaterialTheme.typography.labelSmall, color = StudINTheme.colors.textSecondary,
+        )
     }
 }
 
 @Composable
 private fun MeterRow(label: String, value: Float, color: Color) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.width(130.dp))
-        Box(Modifier.weight(1f)) { GradientProgressBar(value, color = color) }
-        Spacer(Modifier.width(10.dp))
-        Text("${(value * 100).toInt()}%", style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(40.dp))
+    val pct = (value * 100).toInt().coerceIn(0, 100)
+    Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = "$label: $pct percent" }) {
+        Row {
+            Text(label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+            Text("$pct%", style = MaterialTheme.typography.labelLarge)
+        }
+        Spacer(Modifier.height(Spacing.xxs))
+        StudINLinearProgress(value, color = color, height = 6.dp)
     }
 }
 
 @Composable
 private fun DecisionRow(d: ClassificationDecisionEntity) {
     val v = runCatching { Verdict.valueOf(d.label) }.getOrDefault(Verdict.UNKNOWN)
-    val color = verdictColor(v)
-    GlassCard(Modifier.fillMaxWidth(), contentPadding = 12.dp) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(10.dp).clip(CircleShape).background(color))
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text("${d.label} · ${d.sourceApp.substringAfterLast('.')}", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(d.redactedReason, style = MaterialTheme.typography.bodySmall, color = Studin.extras.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("${(d.confidence * 100).toInt()}%", style = MaterialTheme.typography.labelLarge, color = color)
-                Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(d.timestamp)), style = MaterialTheme.typography.labelSmall, color = Studin.extras.muted)
-                if (d.overridden) Text("overridden", style = MaterialTheme.typography.labelSmall, color = StudinColors.Star)
-            }
+    val style = verdictStyle(v)
+    val time = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(d.timestamp))
+    val app = d.sourceApp.substringAfterLast('.').replaceFirstChar { it.uppercase() }
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = Spacing.card, vertical = Spacing.sm)
+            .semantics(mergeDescendants = true) { contentDescription = "${decisionLabel(d.label)} in $app at $time. Signals: ${d.redactedReason}" + if (d.overridden) ". You overrode it" else "" },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(style.icon, null, tint = style.content, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(Spacing.sm))
+        Column(Modifier.weight(1f)) {
+            Text("${decisionLabel(d.label)} · $app", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(d.redactedReason, style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(time, style = MaterialTheme.typography.labelMedium, color = StudINTheme.colors.textSecondary)
+            if (d.overridden) Text("Overridden", style = MaterialTheme.typography.labelSmall, color = StudINTheme.colors.accent)
         }
     }
 }
@@ -408,107 +607,126 @@ private fun DecisionRow(d: ClassificationDecisionEntity) {
 // ------------------------------------------------------------------ Model
 
 @Composable
-private fun ModelTab(vm: AiViewModel, llm: LlmState, useLlm: Boolean, sha: String?) {
+private fun ModelTab(vm: AiViewModel, llm: LlmState, useLlm: Boolean, sha: String?, thinking: Boolean) {
     val model by vm.model.collectAsStateWithLifecycle()
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::importModel) }
+    val c = StudINTheme.colors
     LazyColumn(
-        Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = BottomBarPadding),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        Modifier.fillMaxSize().studinContentWidth(),
+        contentPadding = screenContentPadding(PaddingValues()),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         item {
-            GlassCard(Modifier.fillMaxWidth(), highlight = llm is LlmState.Ready) {
+            StudINCard(Modifier.fillMaxWidth()) {
+                val (title, sub, tone) = when (llm) {
+                    LlmState.NotInstalled -> Triple("Model unavailable", "No model imported. StudIN Lite AI answers from your cards and syllabus on every phone.", c.ai)
+                    is LlmState.Installed -> Triple(llm.name, "${formatBytes(llm.sizeBytes)} · installed, loads on first use", c.ai)
+                    is LlmState.Loading -> Triple("Model loading", "Loading ${llm.name}. This can take 5–20 seconds.", c.ai)
+                    is LlmState.Ready -> Triple(llm.name, if (thinking) "${formatBytes(llm.sizeBytes)} · processing a reply" else "${formatBytes(llm.sizeBytes)} · ready, fully offline", c.success)
+                    is LlmState.Unsupported -> Triple("Not supported on this phone", llm.reason, c.textSecondary)
+                    is LlmState.Error -> Triple("Model error", llm.message, MaterialTheme.colorScheme.error)
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconBubble(Icons.Rounded.Memory, if (llm is LlmState.Ready) StudinColors.Mint else StudinColors.Violet, 52.dp)
-                    Spacer(Modifier.width(14.dp))
+                    StudINIconTile(if (llm is LlmState.Error) Icons.Rounded.ErrorOutline else Icons.Rounded.Memory, tone, 44.dp)
+                    Spacer(Modifier.width(Spacing.sm))
                     Column(Modifier.weight(1f)) {
-                        val (title, sub) = when (llm) {
-                            LlmState.NotInstalled -> "No model imported" to "StudIN Lite AI is active – works on every phone."
-                            is LlmState.Installed -> llm.name to "${mb(llm.sizeBytes)} · loads on first use"
-                            is LlmState.Loading -> "Loading ${llm.name}…" to "This can take 5–20 seconds"
-                            is LlmState.Ready -> llm.name to "${mb(llm.sizeBytes)} · ready, fully offline"
-                            is LlmState.Unsupported -> "Not supported here" to llm.reason
-                            is LlmState.Error -> "Something went wrong" to llm.message
-                        }
-                        Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(sub, style = MaterialTheme.typography.bodySmall, color = Studin.extras.muted)
+                        Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.semantics { heading() })
+                        Text(sub, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
                 }
-                if (llm is LlmState.Loading) { Spacer(Modifier.height(10.dp)); LinearProgressIndicator(Modifier.fillMaxWidth().clip(CircleShape)) }
+                if (llm is LlmState.Loading || (thinking && llm is LlmState.Ready)) {
+                    Spacer(Modifier.height(Spacing.sm))
+                    LinearProgressIndicator(Modifier.fillMaxWidth(), color = c.ai, trackColor = c.focusTrack)
+                }
                 if (!sha.isNullOrBlank() && (llm is LlmState.Installed || llm is LlmState.Ready)) {
-                    Spacer(Modifier.height(12.dp))
-                    Text("SHA-256 (compare with the publisher's checksum)", style = MaterialTheme.typography.labelSmall, color = Studin.extras.muted)
+                    Spacer(Modifier.height(Spacing.sm))
+                    Text("SHA-256 – compare with the publisher's checksum", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
                     SelectionContainer {
-                        Text(sha, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace))
+                        Text(sha, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            modifier = Modifier.fillMaxWidth().background(c.surfaceSecondary, StudINShapes.badge).padding(Spacing.xs))
                     }
                 }
-                Spacer(Modifier.height(14.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    when (llm) {
-                        is LlmState.Installed -> {
-                            GradientButton("Load", vm::load, Modifier.weight(1f), icon = Icons.Rounded.PlayArrow)
-                            GhostButton("Delete", vm::deleteModel, icon = Icons.Rounded.Delete, color = StudinColors.Coral)
-                        }
-                        is LlmState.Ready -> {
-                            GhostButton("Unload", vm::unload, Modifier.weight(1f), icon = Icons.Rounded.Stop)
-                            GhostButton("Delete", vm::deleteModel, icon = Icons.Rounded.Delete, color = StudinColors.Coral)
-                        }
-                        is LlmState.Unsupported -> {}
-                        else -> GradientButton(
-                            if (model.importing) "Importing…" else "Import model file", { picker.launch(arrayOf("*/*")) },
-                            Modifier.weight(1f), icon = Icons.Rounded.Upload, enabled = !model.importing,
-                        )
+                Spacer(Modifier.height(Spacing.sm))
+                when (llm) {
+                    is LlmState.Installed -> Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        StudINPrimaryButton("Load now", { vm.load() }, Modifier.weight(1f), icon = Icons.Rounded.PlayArrow)
+                        StudINOutlinedButton("Delete", { confirmDelete = true }, icon = Icons.Rounded.Delete, contentColor = MaterialTheme.colorScheme.error)
                     }
+                    is LlmState.Ready -> Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        StudINOutlinedButton("Unload", { vm.unload() }, Modifier.weight(1f), icon = Icons.Rounded.Stop, enabled = !thinking)
+                        StudINOutlinedButton("Delete", { confirmDelete = true }, icon = Icons.Rounded.Delete, enabled = !thinking, contentColor = MaterialTheme.colorScheme.error)
+                    }
+                    is LlmState.Loading, is LlmState.Unsupported -> Unit
+                    else -> StudINPrimaryButton(
+                        if (model.importing) "Importing…" else "Import model file", { picker.launch(arrayOf("*/*")) },
+                        Modifier.fillMaxWidth(), icon = Icons.Rounded.Upload, loading = model.importing,
+                    )
                 }
                 if (model.importing) {
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(Spacing.sm))
                     val p = model.progress
                     if (p != null && p.totalBytes > 0) {
-                        GradientProgressBar(p.copiedBytes.toFloat() / p.totalBytes)
-                        Text("${mb(p.copiedBytes)} / ${mb(p.totalBytes)} · verifying checksum", style = MaterialTheme.typography.labelSmall, color = Studin.extras.muted)
-                    } else LinearProgressIndicator(Modifier.fillMaxWidth().clip(CircleShape))
+                        StudINLinearProgress(p.copiedBytes.toFloat() / p.totalBytes, color = c.ai, label = "Import progress")
+                        Spacer(Modifier.height(Spacing.xxs))
+                        Text("${formatBytes(p.copiedBytes)} of ${formatBytes(p.totalBytes)} · verifying checksum", style = MaterialTheme.typography.labelMedium, color = c.textSecondary)
+                    } else LinearProgressIndicator(Modifier.fillMaxWidth(), color = c.ai, trackColor = c.focusTrack)
                 }
-                model.message?.let { Spacer(Modifier.height(10.dp)); Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
+                model.message?.let {
+                    Spacer(Modifier.height(Spacing.xs))
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
             }
         }
         item {
-            GlassCard(Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconBubble(Icons.Rounded.Bolt, StudinColors.Star)
-                    Spacer(Modifier.width(12.dp))
+            StudINCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.card, vertical = Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    StudINIconTile(Icons.Rounded.Bolt, c.accent, 36.dp)
+                    Spacer(Modifier.width(Spacing.sm))
                     Column(Modifier.weight(1f)) {
-                        Text("Use on-device LLM", style = MaterialTheme.typography.titleMedium)
-                        Text("Turn off to always use the instant Lite engine (saves battery).", style = MaterialTheme.typography.bodySmall, color = Studin.extras.muted)
+                        Text("Use on-device model", style = MaterialTheme.typography.titleMedium)
+                        Text("Off = always use the instant Lite engine (saves battery).", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                     }
-                    Switch(checked = useLlm, onCheckedChange = vm::setUseLlm)
+                    Switch(checked = useLlm, onCheckedChange = vm::setUseLlm,
+                        modifier = Modifier.semantics { contentDescription = "Use on-device model" })
                 }
             }
         }
         item {
-            GlassCard(Modifier.fillMaxWidth()) {
+            StudINCard(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconBubble(Icons.Rounded.Download, StudinColors.Cyan)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Getting a model", style = MaterialTheme.typography.titleMedium)
+                    StudINIconTile(Icons.Rounded.Download, MaterialTheme.colorScheme.primary, 36.dp)
+                    Spacer(Modifier.width(Spacing.sm))
+                    Text("Getting a model", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
                 }
-                Spacer(Modifier.height(10.dp))
-                Guide("Recommended: Gemma 3 1B IT, int4, MediaPipe `.task` format (≈0.5–0.6 GB).")
-                Guide("Download it yourself from Kaggle (Gemma models) or Hugging Face (LiteRT community) in a browser, accept the licence, then copy it to this phone.")
+                Spacer(Modifier.height(Spacing.xs))
+                Guide("Recommended: Gemma 3 1B IT, int4, MediaPipe .task format (about 0.5–0.6 GB).")
+                Guide("Download it yourself from Kaggle (Gemma models) or Hugging Face (LiteRT community), accept the licence, then copy it to this phone.")
                 Guide("Tap Import and pick the file. StudIN copies it into private storage and shows its SHA-256 so you can verify it.")
-                Guide("Requirements: 64-bit phone with at least 4 GB RAM. Runs fully offline – StudIN has no internet permission.")
-                Guide("Lite AI (summaries, flashcards from notes, retrieval over your cards, smart filtering) always works as a fallback.")
+                Guide("Requirements: a 64-bit phone with at least 4 GB RAM. Runs fully offline – StudIN has no internet permission.")
+                Guide("Lite AI (summaries, flashcards from notes, answers from your cards, smart filtering) always works as a fallback.")
             }
         }
+    }
+    if (confirmDelete) {
+        StudINDialog(
+            title = "Delete the model?", onDismiss = { confirmDelete = false },
+            confirmLabel = "Delete", onConfirm = { confirmDelete = false; vm.deleteModel() }, destructive = true, icon = Icons.Rounded.Delete,
+            text = { Text("The model file is removed from this phone. Lite AI keeps working; you can import the model again later.") },
+        )
     }
 }
 
 @Composable
 private fun Guide(text: String) {
-    Row(Modifier.padding(vertical = 4.dp)) {
-        Box(Modifier.padding(top = 7.dp).size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
-        Spacer(Modifier.width(10.dp))
+    Row(Modifier.padding(vertical = Spacing.xxs)) {
+        Box(Modifier.padding(top = 7.dp).size(5.dp).background(LocalContentColor.current.copy(alpha = 0.6f), CircleShape))
+        Spacer(Modifier.width(Spacing.xs))
         Text(text, style = MaterialTheme.typography.bodyMedium)
     }
 }
-
-private fun mb(bytes: Long) = if (bytes >= 1_000_000_000) "%.2f GB".format(bytes / 1e9) else "${bytes / 1_000_000} MB"
