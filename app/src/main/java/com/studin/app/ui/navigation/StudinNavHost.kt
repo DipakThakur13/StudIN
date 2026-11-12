@@ -102,7 +102,7 @@ fun StudinNavHost(nav: NavHostController, startDestination: String) {
                 }
                 composable(Routes.HOME) { HomeScreen(onNavigate = navigate) }
                 composable(Routes.FOCUS) { FocusScreen(onNavigate = navigate) }
-                composable(Routes.RULES) { RulesScreen(onBack = back) }
+                composable(Routes.RULES) { RulesScreen(onBack = back, onOpenPermissions = { navigate(Routes.PERMISSIONS) }) }
                 composable(Routes.STUDY) { StudyScreen(onNavigate = navigate) }
                 composable(Routes.DECK, arguments = listOf(navArgument("deckId") { type = NavType.LongType })) {
                     DeckScreen(deckId = it.arguments?.getLong("deckId") ?: -1L, onNavigate = navigate, onBack = back)
