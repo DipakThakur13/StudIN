@@ -11,6 +11,7 @@ import com.studin.app.core.data.repo.exam
 import com.studin.app.platform.focus.FocusController
 import com.studin.domain.focus.FocusSnapshot
 import com.studin.domain.model.ExamType
+import com.studin.domain.model.FocusState
 import com.studin.domain.plan.PlanBlock
 import com.studin.domain.plan.PlannerTopic
 import com.studin.domain.plan.StudyPlanner
@@ -22,6 +23,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
+/** Progress of a syllabus topic, for the "Continue studying" card and plan completion state. */
+data class TopicProgress(val mastery: Double, val minutesStudied: Int, val studiedToday: Boolean)
+
 data class HomeState(
     val loaded: Boolean = false,
     val name: String = "",
@@ -30,11 +34,15 @@ data class HomeState(
     val goalMinutes: Int = 120,
     val todayMinutes: Int = 0,
     val todaySessions: Int = 0,
+    val completedToday: Int = 0,
+    val weekSessions: Int = 0,
     val streak: Int = 0,
     val streaksEnabled: Boolean = true,
     val dueCards: Int = 0,
     val totalCards: Int = 0,
+    val hasTopics: Boolean = false,
     val plan: List<PlanBlock> = emptyList(),
+    val topicProgress: Map<Long, TopicProgress> = emptyMap(),
     val weekMinutes: List<Int> = List(7) { 0 },
 )
 
@@ -65,6 +73,7 @@ class HomeViewModel @Inject constructor(
         val goal = profile?.dailyGoalMinutes ?: 120
         val missedYesterday = sessions.isNotEmpty() && (byDay[today - 1] ?: 0) == 0 && todayMin == 0
         val planner = topics.map { PlannerTopic(it.id, it.subject, it.title, it.priority, it.mastery, it.minutesStudied, it.lastStudiedDay) }
+        val todays = sessions.filter { clock.dayOf(it.startWallTime) == today }
         HomeState(
             loaded = true,
             name = profile?.name.orEmpty(),
@@ -72,16 +81,20 @@ class HomeViewModel @Inject constructor(
             daysToExam = profile?.examDay?.let { it - today },
             goalMinutes = goal,
             todayMinutes = todayMin,
-            todaySessions = sessions.count { clock.dayOf(it.startWallTime) == today },
+            todaySessions = todays.size,
+            completedToday = todays.count { it.status == FocusState.COMPLETED.name },
+            weekSessions = sessions.count { clock.dayOf(it.startWallTime) > today - 7 },
             streak = StreakCalculator.currentStreak(activeDays, today),
             streaksEnabled = settings.streaksEnabled,
             dueCards = due,
             totalCards = total,
-            plan = StudyPlanner.planToday(planner, today, profile?.examDay, (goal - todayMin).coerceAtLeast(25), due, missedYesterday).take(5),
+            hasTopics = topics.isNotEmpty(),
+            plan = StudyPlanner.planToday(planner, today, profile?.examDay, (goal - todayMin).coerceAtLeast(25), due, missedYesterday).take(6),
+            topicProgress = topics.associate { it.id to TopicProgress(it.mastery, it.minutesStudied, it.lastStudiedDay == today) },
             weekMinutes = (6 downTo 0).map { byDay[today - it] ?: 0 },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
 
     fun startBlock(block: PlanBlock) = controller.start(block.minutes, block.topicId, block.title)
-    fun quickStart(minutes: Int = 25) = controller.start(minutes, null, "Deep focus")
+    fun resume() = controller.resume()
 }
