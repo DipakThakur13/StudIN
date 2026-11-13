@@ -15,6 +15,8 @@ import com.studin.app.core.data.prefs.AppSettings
 import com.studin.app.core.data.prefs.UserPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -71,6 +73,8 @@ class AiViewModel @Inject constructor(
     val access: StateFlow<AccessCheck> = _access.asStateFlow()
 
     init {
+        // Load the model in the background while the student types, so the first answer is quicker.
+        llm.prewarm()
         // When a download finishes: forget the job (its input held the token) and warm the model up.
         viewModelScope.launch {
             download.collect { d ->
@@ -144,8 +148,10 @@ class AiViewModel @Inject constructor(
         _thinking.value = true
         chatJob = viewModelScope.launch {
             try {
-                assistant.chat(q, history).collect { (partial, engine) ->
+                // conflate + ~60 ms pacing: the UI re-renders ≈16×/s instead of once per token.
+                assistant.chat(q, history).conflate().collect { (partial, engine) ->
                     _messages.update { list -> list.map { if (it.id == replyId) it.copy(text = partial, engine = engine) else it } }
+                    delay(60)
                 }
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t

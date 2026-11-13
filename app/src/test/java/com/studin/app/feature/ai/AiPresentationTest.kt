@@ -64,4 +64,25 @@ class AiPresentationTest {
         assertEquals("1.07 GB", formatBytes(1_073_765_694))
         assertEquals("0 MB", formatBytes(0))
     }
+
+    @Test fun inlineMarkdownFromTheBugReportRendersWithoutRawMarkers() {
+        // Output Gemma produced in the field: literal ** and ` showed on screen.
+        val spans = parseInline("**Print Statement:** The `print()` function lets you display *text*.")
+        assertEquals(listOf(
+            InlineSpan("Print Statement:", bold = true), InlineSpan(" The "), InlineSpan("print()", code = true),
+            InlineSpan(" function lets you display "), InlineSpan("text", italic = true), InlineSpan("."),
+        ), spans)
+        assertTrue(spans.none { "*" in it.text || "`" in it.text })
+    }
+
+    @Test fun unbalancedMarkersAreHiddenWhileStreaming() {
+        assertEquals(listOf(InlineSpan("What you")), parseInline("**What you"))
+        assertEquals(listOf(InlineSpan("2 * 3 = 6")), parseInline("2 * 3 = 6"))
+    }
+
+    @Test fun headingsAndPlainCopy() {
+        val blocks = formatReply("## Newton's laws\n- **First:** inertia\n```\nF = ma\n```")
+        assertEquals(ReplyBlock.Heading("Newton's laws"), blocks[0])
+        assertEquals("Newton's laws\n• First: inertia\nF = ma", plainReply("## Newton's laws\n- **First:** inertia\n```\nF = ma\n```"))
+    }
 }

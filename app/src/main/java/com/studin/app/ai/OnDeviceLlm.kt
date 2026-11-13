@@ -1,6 +1,8 @@
 package com.studin.app.ai
 
 import android.app.ActivityManager
+import android.content.ComponentCallbacks2
+import android.content.res.Configuration
 import android.content.Context
 import android.net.Uri
 import android.os.BatteryManager
@@ -20,6 +22,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
@@ -40,6 +45,9 @@ sealed interface LlmState {
 
 data class ImportProgress(val copiedBytes: Long, val totalBytes: Long)
 
+/** One streamed piece of model output. [stoppedEarly] = StudIN cut generation (length cap / loop). */
+data class LlmChunk(val text: String, val done: Boolean, val stoppedEarly: Boolean = false)
+
 /**
  * Optional Tier-2 on-device LLM (roadmap §4) powered by MediaPipe LLM Inference.
  * The student imports a quantised model file (e.g. Gemma 3 1B int4 `.task`) from
@@ -55,12 +63,43 @@ class OnDeviceLlm @Inject constructor(
     private val _state = MutableStateFlow<LlmState>(LlmState.NotInstalled)
     val state: StateFlow<LlmState> = _state.asStateFlow()
 
-    private var engine: LlmInference? = null
+    @Volatile private var engine: LlmInference? = null
     private val lock = Mutex()
+    /** Serialises loading so a prewarm and a first question can't load the model twice (~2x RAM). */
+    private val loadLock = Mutex()
+    private var idleJob: Job? = null
     private val modelsDir get() = File(context.filesDir, "models").apply { mkdirs() }
 
     init {
         scope.launch { refreshState() }
+        // Give the ~0.6 GB model back to the system when Android is short on memory.
+        context.registerComponentCallbacks(object : ComponentCallbacks2 {
+            override fun onTrimMemory(level: Int) {
+                @Suppress("DEPRECATION")
+                if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND || level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW ||
+                    level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) unloadIfIdle()
+            }
+            override fun onConfigurationChanged(newConfig: Configuration) {}
+            @Deprecated("Deprecated in Java") override fun onLowMemory() = unloadIfIdle()
+        })
+    }
+
+    private fun unloadIfIdle() { if (!lock.isLocked) unload() }
+
+    /** Unload after [IDLE_UNLOAD_MS] without use; rescheduled after every answer. */
+    private fun scheduleIdleUnload() {
+        idleJob?.cancel()
+        idleJob = scope.launch { delay(IDLE_UNLOAD_MS); unloadIfIdle() }
+    }
+
+    /** Load in the background (e.g. when AI Tutor opens) so the first answer starts sooner. */
+    fun prewarm() {
+        scope.launch {
+            val s = prefs.current()
+            if (s.aiUseLlm && powerBudgetOk() && (state.value is LlmState.Installed || state.value is LlmState.Ready)) {
+                if (ensureLoaded()) scheduleIdleUnload()
+            }
+        }
     }
 
     suspend fun refreshState() {
@@ -137,12 +176,15 @@ class OnDeviceLlm @Inject constructor(
     }
 
     /** Load the model if needed. Returns false when unavailable. */
-    suspend fun ensureLoaded(): Boolean = withContext(Dispatchers.IO) {
-        if (engine != null) return@withContext true
-        val file = prefs.current().aiModelFile?.let { File(modelsDir, it) }?.takeIf { it.exists() } ?: return@withContext false
-        if (!deviceSupported()) return@withContext false
+    suspend fun ensureLoaded(): Boolean = withContext(Dispatchers.IO) { loadLock.withLock { loadLocked() } }
+
+    private suspend fun loadLocked(): Boolean {
+        idleJob?.cancel()
+        if (engine != null) return true
+        val file = prefs.current().aiModelFile?.let { File(modelsDir, it) }?.takeIf { it.exists() } ?: return false
+        if (!deviceSupported()) return false
         _state.value = LlmState.Loading(file.name)
-        runCatching {
+        return runCatching {
             val options = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(file.absolutePath)
                 .setMaxTokens(1024)
@@ -166,25 +208,49 @@ class OnDeviceLlm @Inject constructor(
         if (s is LlmState.Ready) _state.value = LlmState.Installed(s.name, s.sizeBytes)
     }
 
-    /** Streams the accumulated response text. Errors are emitted as exceptions. */
-    fun generate(prompt: String, temperature: Float = 0.6f): Flow<String> = callbackFlow {
+    /**
+     * Streams the accumulated response. Sampling is deliberately calm (low temperature, small
+     * top-K) to reduce invented facts. [stopWhen] is checked on every token; when it returns true
+     * native generation is cancelled (saves time and battery) and the last chunk has
+     * `stoppedEarly = true`.
+     */
+    fun generate(
+        prompt: String,
+        temperature: Float = 0.3f,
+        topK: Int = 20,
+        topP: Float = 0.9f,
+        stopWhen: (String) -> Boolean = { false },
+    ): Flow<LlmChunk> = callbackFlow {
         if (!lock.tryLock()) { close(IllegalStateException("AI is busy with another answer")); return@callbackFlow }
         var session: LlmInferenceSession? = null
+        idleJob?.cancel()
         try {
             if (!powerBudgetOk()) throw IllegalStateException("Battery saver is on – using Lite AI to save power")
             if (!ensureLoaded()) throw IllegalStateException("On-device model not available")
             val e = engine ?: throw IllegalStateException("Model unloaded")
             val opts = LlmInferenceSession.LlmInferenceSessionOptions.builder()
-                .setTemperature(temperature).setTopK(40).setTopP(0.95f).build()
+                .setTemperature(temperature).setTopK(topK).setTopP(topP).build()
             session = LlmInferenceSession.createFromOptions(e, opts)
-            // Keep prompts inside the context budget.
-            val budget = 700
-            val trimmed = if (e.sizeInTokens(prompt) > budget) prompt.takeLast(2_400) else prompt
-            session.addQueryChunk(trimmed)
+            // Prompts are built rules-first by TutorGuard; if still over budget, cut from the END
+            // (question tail) so the instructions are never lost.
+            val tokens = e.sizeInTokens(prompt)
+            val fitted = if (tokens > MAX_INPUT_TOKENS) prompt.take((prompt.length.toLong() * MAX_INPUT_TOKENS / tokens).toInt()) else prompt
+            session.addQueryChunk(fitted)
             val sb = StringBuilder()
-            session.generateResponseAsync { partial, done ->
-                if (partial != null) { sb.append(partial); trySend(sb.toString()) }
-                if (done) close()
+            var stopped = false
+            val s = session
+            s.generateResponseAsync { partial, done ->
+                if (stopped) return@generateResponseAsync
+                if (partial != null) sb.append(partial)
+                val text = sb.toString()
+                if (!done && stopWhen(text)) {
+                    stopped = true
+                    runCatching { s.cancelGenerateResponseAsync() }
+                    trySend(LlmChunk(text, done = true, stoppedEarly = true)); close()
+                } else {
+                    trySend(LlmChunk(text, done))
+                    if (done) close()
+                }
             }
         } catch (t: Throwable) {
             close(t)
@@ -192,6 +258,14 @@ class OnDeviceLlm @Inject constructor(
         awaitClose {
             runCatching { session?.close() }
             if (lock.isLocked) lock.unlock()
+            scheduleIdleUnload()
         }
     }.flowOn(Dispatchers.IO)
+
+    companion object {
+        /** Input budget (tokens); the engine's total context is 1024 incl. the answer. */
+        private const val MAX_INPUT_TOKENS = 600
+        /** Free the model after this long without use. */
+        private const val IDLE_UNLOAD_MS = 3 * 60_000L
+    }
 }

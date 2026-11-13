@@ -9,6 +9,14 @@
 * Release build (R8-minified), signed with a **debug/test key** — not the Play Store key.
 * Checksums: [`SHA256SUMS.txt`](SHA256SUMS.txt)
 
+## What's new in 2.2.0
+* **Controlled AI Tutor** — the app now routes "who are you", greetings, revision plans, quizzes,
+  stress and off-topic messages itself; only real study questions reach Gemma, with strict rules,
+  calmer sampling, a ~120-word cap and an output guard against loops and invented follow-ups.
+* **No more raw markdown** — `**bold**`, `code` and headings render properly; copy gives clean text.
+* **Faster & lighter** — no double model loads, model prewarms when you open AI Tutor and is freed
+  when idle; smoother streaming.
+
 ## What's new in 2.1.0
 * **AI Tutor is one page** — the Content check and Model tabs are gone.
 * **Download AI Tutor** — one tap + confirm downloads Google's Gemma 3 1B (555 MB) from Hugging Face in

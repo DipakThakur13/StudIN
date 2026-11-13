@@ -1,5 +1,14 @@
 package com.studin.app.feature.ai
 
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.sample
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
@@ -120,7 +129,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studin.app.R
 import com.studin.app.ai.AiEngine
-import com.studin.app.ai.ContentCheck
 import com.studin.app.ai.LlmState
 import com.studin.app.core.data.db.ClassificationDecisionEntity
 import com.studin.app.core.designsystem.Motion
@@ -260,11 +268,21 @@ private fun TutorTab(vm: AiViewModel, onNavigate: (String) -> Unit, downloading:
     val reduced = StudINTheme.reducedMotion
     val padding = screenContentPadding(PaddingValues(), top = Spacing.xs, bottom = Spacing.md)
 
-    LaunchedEffect(messages.size, messages.lastOrNull()?.text?.length) {
-        if (messages.isNotEmpty()) {
-            val last = listState.layoutInfo.totalItemsCount - 1
-            if (last >= 0) { if (reduced) listState.scrollToItem(last) else listState.animateScrollToItem(last) }
-        }
+    // New message: bring it into view once. While a reply streams, follow it at most ~3×/s and only
+    // if the student hasn't scrolled up to read (no per-token animated scrolling → no jank).
+    LaunchedEffect(messages.size) {
+        val last = listState.layoutInfo.totalItemsCount - 1
+        if (messages.isNotEmpty() && last >= 0) { if (reduced) listState.scrollToItem(last) else listState.animateScrollToItem(last) }
+    }
+    LaunchedEffect(Unit) {
+        snapshotFlow { vm.messages.value.lastOrNull()?.takeIf { it.streaming }?.text?.length ?: -1 }
+            .filter { it > 0 }
+            .sample(300)
+            .collect {
+                val info = listState.layoutInfo
+                val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: return@collect
+                if (lastVisible >= info.totalItemsCount - 2) listState.scrollToItem(info.totalItemsCount - 1, Int.MAX_VALUE / 2)
+            }
     }
     LaunchedEffect(requestFocus) { if (requestFocus) { runCatching { focus.requestFocus() }; requestFocus = false } }
 
@@ -413,6 +431,13 @@ private fun TutorBubble(m: ChatMessage, onRetry: () -> Unit, canRetry: Boolean) 
                             .then(if (!m.streaming) Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier)) {
                             ReplyText(m.text)
                         }
+                        if (m.engine == AiEngine.LLM && !m.streaming) {
+                            Text(
+                                "AI can make mistakes — check important facts with your textbook.",
+                                style = MaterialTheme.typography.labelSmall, color = StudINTheme.colors.textSecondary,
+                                modifier = Modifier.padding(top = Spacing.xs, end = Spacing.sm),
+                            )
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             m.engine?.let {
                                 StudINBadge(
@@ -426,7 +451,7 @@ private fun TutorBubble(m: ChatMessage, onRetry: () -> Unit, canRetry: Boolean) 
                             }
                             Spacer(Modifier.weight(1f))
                             if (!m.streaming) {
-                                StudINIconButton(Icons.Rounded.ContentCopy, "Copy reply", { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("StudIN reply", m.text))) } },
+                                StudINIconButton(Icons.Rounded.ContentCopy, "Copy reply", { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("StudIN reply", plainReply(m.text)))) } },
                                     tint = StudINTheme.colors.textSecondary)
                             } else Spacer(Modifier.height(Spacing.touchTarget))
                         }
@@ -454,25 +479,39 @@ private fun ThinkingRow() {
 @Composable
 private fun ReplyText(text: String) {
     val blocks = remember(text) { formatReply(text) }
+    val codeBg = StudINTheme.colors.surfaceSecondary
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         blocks.forEach { b ->
             when (b) {
-                is ReplyBlock.Paragraph -> Text(b.text, style = MaterialTheme.typography.bodyMedium)
+                is ReplyBlock.Heading -> Text(rich(b.text, codeBg), style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+                is ReplyBlock.Paragraph -> Text(rich(b.text, codeBg), style = MaterialTheme.typography.bodyMedium)
                 is ReplyBlock.Bullet -> Row {
                     Box(Modifier.padding(top = 8.dp).size(5.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
                     Spacer(Modifier.width(Spacing.xs))
-                    Text(b.text, style = MaterialTheme.typography.bodyMedium)
+                    Text(rich(b.text, codeBg), style = MaterialTheme.typography.bodyMedium)
                 }
                 is ReplyBlock.Numbered -> Row {
                     Text("${b.number}.", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(22.dp))
-                    Text(b.text, style = MaterialTheme.typography.bodyMedium)
+                    Text(rich(b.text, codeBg), style = MaterialTheme.typography.bodyMedium)
                 }
                 is ReplyBlock.Code -> Text(
                     b.text,
                     style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                    modifier = Modifier.fillMaxWidth().background(StudINTheme.colors.surfaceSecondary, StudINShapes.badge).padding(Spacing.xs),
+                    modifier = Modifier.fillMaxWidth().background(codeBg, StudINShapes.badge).padding(Spacing.xs),
                 )
             }
+        }
+    }
+}
+
+/** Inline markdown → styled text (bold, italic, monospace code chips). */
+private fun rich(text: String, codeBg: Color): AnnotatedString = buildAnnotatedString {
+    parseInline(text).forEach { s ->
+        when {
+            s.code -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = codeBg)) { append(" ${s.text} ") }
+            s.bold -> withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append(s.text) }
+            s.italic -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(s.text) }
+            else -> append(s.text)
         }
     }
 }

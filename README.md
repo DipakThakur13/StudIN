@@ -73,6 +73,22 @@ create Read token → paste). The token is only ever sent to `huggingface.co`, n
 Note: a token inside an APK can be extracted by anyone with the APK; use a fine-grained,
 read-only token you can rotate. Already have the file? **⋮ → Import model file**.
 
+### How StudIN keeps the on-device AI under control
+A 1B-parameter model drifts and invents facts if left alone, so the app decides what it may do
+(`core/domain/.../ai/TutorGuard.kt`, unit-tested):
+
+* **Intent routing** — identity, greetings, thanks, revision planning (real planner data), quiz,
+  wellbeing, off-topic (syllabus classifier) and self-harm messages (Tele-MANAS 14416) are answered
+  by the app; only study questions and note summaries reach Gemma.
+* **One clean instruction turn** — strict rules first (never truncated), at most 3 relevant
+  flashcards, previous exchange only for real follow-ups (no answers bleeding into new questions).
+* **Calm sampling** — temperature 0.3 (0.2 for summaries/cards), top-K 20, top-P 0.9.
+* **Output guard** — strips role echoes/special tokens, cuts repetition loops, stops native
+  generation at ~120 words on a sentence boundary, closes open code blocks.
+* **Honest UI** — inline markdown rendered properly and a "check important facts" note on model answers.
+* **Resources** — single model load (mutex), prewarm on opening AI Tutor, unload after 3 min idle
+  or on memory pressure, UI updates throttled while streaming.
+
 ## Architecture
 
 ```

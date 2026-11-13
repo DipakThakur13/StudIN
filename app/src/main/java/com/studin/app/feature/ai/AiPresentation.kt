@@ -28,6 +28,7 @@ fun engineStatus(llm: LlmState, useLlm: Boolean, generating: Boolean = false): E
 
 /** A displayable chunk of a tutor reply. */
 sealed interface ReplyBlock {
+    data class Heading(val text: String) : ReplyBlock
     data class Paragraph(val text: String) : ReplyBlock
     data class Bullet(val text: String) : ReplyBlock
     data class Numbered(val number: String, val text: String) : ReplyBlock
@@ -57,6 +58,8 @@ fun formatReply(text: String): List<ReplyBlock> {
             continue
         }
         if (inCode) { code.append(raw).append('\n'); continue }
+        val heading = Regex("^\\s{0,3}#{1,6}\\s+(.+)$").find(raw)
+        if (heading != null) { flushPara(); out += ReplyBlock.Heading(heading.groupValues[1].trim().trimEnd('#').trim()); continue }
         val bullet = bulletPrefix.find(raw)
         val numbered = numberPrefix.find(raw)
         when {
@@ -74,3 +77,43 @@ fun formatReply(text: String): List<ReplyBlock> {
 
 
 fun formatBytes(bytes: Long): String = if (bytes >= 1_000_000_000) String.format(java.util.Locale.US, "%.2f GB", bytes / 1e9) else "${(bytes + 500_000) / 1_000_000} MB"
+
+/** A run of reply text with inline markdown styling resolved. */
+data class InlineSpan(val text: String, val bold: Boolean = false, val italic: Boolean = false, val code: Boolean = false)
+
+private val inlineToken = Regex("`([^`\n]+)`|\\*\\*([^*\n]+)\\*\\*|__([^_\n]+)__|(?<![*\\w])\\*([^*\\s][^*\n]*?)\\*(?![*\\w])")
+
+/**
+ * Resolves `code`, **bold**, __bold__ and *italic* so model output never shows raw markdown.
+ * Unbalanced markers (e.g. mid-stream "**Hea") are hidden rather than printed.
+ */
+fun parseInline(text: String): List<InlineSpan> {
+    val out = ArrayList<InlineSpan>()
+    fun plain(t: String) { val c = t.replace("**", "").replace("`", ""); if (c.isNotEmpty()) out += InlineSpan(c) }
+    var i = 0
+    for (m in inlineToken.findAll(text)) {
+        if (m.range.first > i) plain(text.substring(i, m.range.first))
+        val g = m.groupValues
+        when {
+            g[1].isNotEmpty() -> out += InlineSpan(g[1], code = true)
+            g[2].isNotEmpty() -> out += InlineSpan(g[2], bold = true)
+            g[3].isNotEmpty() -> out += InlineSpan(g[3], bold = true)
+            g[4].isNotEmpty() -> out += InlineSpan(g[4], italic = true)
+        }
+        i = m.range.last + 1
+    }
+    if (i < text.length) plain(text.substring(i))
+    return out
+}
+
+/** Plain text of a reply (markdown removed) – used for Copy and screen readers. */
+fun plainReply(text: String): String = formatReply(text).joinToString("\n") { b ->
+    fun p(t: String) = parseInline(t).joinToString("") { it.text }
+    when (b) {
+        is ReplyBlock.Heading -> p(b.text)
+        is ReplyBlock.Paragraph -> p(b.text)
+        is ReplyBlock.Bullet -> "• " + p(b.text)
+        is ReplyBlock.Numbered -> "${b.number}. " + p(b.text)
+        is ReplyBlock.Code -> b.text
+    }
+}

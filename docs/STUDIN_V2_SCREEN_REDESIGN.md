@@ -44,3 +44,13 @@ At the product owner's request the AI Tutor is now a **single page**: the *Conte
 Consequence: the app now declares `INTERNET` (used only by this download). ML Kit's usage-log
 uploader is disabled so no library can send data. The Focus Guard classifier still runs during
 focus sessions; only its test UI was removed.
+
+## v2.2 update — controlled on-device AI
+Field report (screenshots): raw `**markdown**`, an invented "What's missing" section, and "who are
+you" answered with the previous print() answer. Root causes found in code: prompt over-budget was
+cut with `takeLast()` (dropping the rules), chat history was pasted as fake `Student:/Tutor:` lines
+inside one user turn, every message (incl. identity/plans) went to the model, creative sampling
+(T 0.6, top-K 40) and no output cap. Fixes: `TutorGuard` (routing, rules-first prompt, follow-up
+only history), `ReplyGuard` (clean/stop/finish), calm sampling with native early stop, inline
+markdown rendering, an accuracy note, a model-load mutex (previously a prewarm and a first question
+could load the model twice), idle/memory-pressure unload and throttled streaming/scrolling.
