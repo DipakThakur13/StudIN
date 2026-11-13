@@ -2,11 +2,13 @@
 
 | File | Size | Use it for |
 |---|---|---|
-| [`StudIN-v2.2.0-arm64.apk`](StudIN-v2.2.0-arm64.apk) | 28.8 MB | **Recommended.** Almost every Android phone made since ~2017 (64-bit ARM). |
-| [`StudIN-v2.2.0-universal.apk`](StudIN-v2.2.0-universal.apk) | 70.7 MB | Any device: older 32-bit phones and Android Studio x86_64 emulators. |
+| [`StudIN-v2.3.0-arm64.apk`](StudIN-v2.3.0-arm64.apk) | @ARM64@ | **Recommended.** Almost every Android phone made since ~2017 (64-bit ARM). Full AI Tutor with GPU. |
+| [`StudIN-v2.3.0-x86_64.apk`](StudIN-v2.3.0-x86_64.apk) | @X86@ | Android Studio emulators (x86_64) and x86 Chromebooks. |
+| [`StudIN-v2.3.0-armv7.apk`](StudIN-v2.3.0-armv7.apk) | @V7@ | Old 32-bit-only phones. Everything except the downloadable AI model (Lite AI works). |
 
-* Version **2.2.0** (versionCode 4) · package `com.studin.app` · Android 8.0+ (minSdk 26), targets Android 16 (SDK 36)
+* Version **2.3.0** (versionCode 5) · package `com.studin.app` · Android 8.0+ (minSdk 26), targets Android 16 (SDK 36)
 * Release build (R8-minified), signed with a **debug/test key** — not the Play Store key.
+* Why no universal APK any more? With the new AI runtime it would be ~121 MB, above GitHub's 100 MB file limit.
 * Checksums: [`SHA256SUMS.txt`](SHA256SUMS.txt)
 
 ## What's new in 2.3.0
@@ -42,7 +44,7 @@
 
 Or from a computer with USB debugging enabled:
 ```bash
-adb install -r StudIN-v2.2.0-arm64.apk
+adb install -r StudIN-v2.3.0-arm64.apk
 ```
 
 > If an older StudIN test build signed with a different key is installed, Android refuses the update
@@ -68,6 +70,7 @@ Nothing you study is uploaded. The only network use is the optional **Download A
 
 ## Build it yourself
 ```bash
-./gradlew :app:assembleRelease                              # universal → app/build/outputs/apk/release/
-./gradlew :app:assembleRelease -Pstudin.abis=arm64-v8a      # phone-only, smaller
+./gradlew :app:assembleRelease -Pstudin.abis=arm64-v8a      # phones → app/build/outputs/apk/release/
+./gradlew :app:assembleRelease -Pstudin.abis=x86_64         # emulators
+./gradlew :app:assembleRelease                              # universal (all ABIs, ~121 MB)
 ```

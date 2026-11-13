@@ -37,11 +37,10 @@
         android:theme="@style/Theme.StudIN"
         tools:targetApi="36">
 
-        <!-- GPU acceleration for the on-device AI Tutor (LiteRT-LM uses OpenCL). Optional:
-             phones without these vendor libraries simply run the model on the CPU. -->
-        <uses-native-library android:name="libOpenCL.so" android:required="false" />
-        <uses-native-library android:name="libOpenCL-car.so" android:required="false" />
-        <uses-native-library android:name="libOpenCL-pixel.so" android:required="false" />
+        <!-- GPU acceleration for the on-device AI Tutor (LiteRT-LM uses OpenCL) needs the vendor
+             libraries libOpenCL.so / libOpenCL-car.so / libOpenCL-pixel.so declared with
+             <uses-native-library android:required="false">. The MediaPipe tasks-genai dependency
+             already merges exactly those declarations in; re-add them here if it is removed. -->
 
         <activity
             android:name=".MainActivity"

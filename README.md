@@ -10,7 +10,7 @@ Kotlin · Jetpack Compose · Material 3 · Hilt · Room · DataStore · WorkMana
 
 ## ⬇️ Download & test
 
-**[Download the latest test APK (v2.2.0)](output/)** — `StudIN-v2.2.0-arm64.apk` (28.8 MB, recommended for phones) or `StudIN-v2.2.0-universal.apk` (70.7 MB, any device/emulator). Install steps and a test checklist are in [`output/README.md`](output/README.md).
+**[Download the latest test APK (v2.3.0)](output/)** — `StudIN-v2.3.0-arm64.apk` (@ARM64@, recommended for phones), `StudIN-v2.3.0-x86_64.apk` (@X86@, emulators) or `StudIN-v2.3.0-armv7.apk` (@V7@, old 32-bit phones). Install steps and a test checklist are in [`output/README.md`](output/README.md).
 
 ---
 

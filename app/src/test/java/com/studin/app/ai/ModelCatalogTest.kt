@@ -48,4 +48,13 @@ class ModelCatalogTest {
         assertFalse(ModelCatalog.QWEN25_1_5B.hasThinking)
         assertFalse(ModelCatalog.LEGACY_GEMMA3_1B in ModelCatalog.downloadable)
     }
+
+    @Test fun only64BitProcessesCanRunTheModels() {
+        assertTrue(OnDeviceLlm.processIs64Bit("aarch64"))
+        assertTrue(OnDeviceLlm.processIs64Bit("x86_64"))
+        assertFalse(OnDeviceLlm.processIs64Bit("armv8l")) // 32-bit app on a 64-bit phone
+        assertFalse(OnDeviceLlm.processIs64Bit("armv7l"))
+        assertFalse(OnDeviceLlm.processIs64Bit("i686"))
+        assertFalse(OnDeviceLlm.processIs64Bit(null))
+    }
 }

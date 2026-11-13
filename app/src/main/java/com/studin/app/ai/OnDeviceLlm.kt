@@ -74,7 +74,11 @@ class OnDeviceLlm @Inject constructor(
     private val modelsDir get() = File(context.filesDir, "models").apply { mkdirs() }
 
     val totalRamBytes: Long get() = currentTotalRam()
-    private val is64Bit: Boolean get() = android.os.Build.SUPPORTED_64_BIT_ABIS.isNotEmpty()
+    /**
+     * The app's own process must be 64-bit: LiteRT-LM ships arm64/x86_64 libraries only, so a
+     * 32-bit APK on a 64-bit phone can't run the models even though the phone could.
+     */
+    private val is64Bit: Boolean get() = processIs64Bit(System.getProperty("os.arch")) && android.os.Build.SUPPORTED_64_BIT_ABIS.isNotEmpty()
 
     /** Model StudIN offers for this phone (Qwen3 4B on 8 GB+, Qwen2.5 1.5B on 4–6 GB), or null. */
     val recommended: TutorModel? get() = ModelCatalog.recommendedFor(currentTotalRam(), is64Bit)
@@ -331,6 +335,12 @@ class OnDeviceLlm @Inject constructor(
     }.flowOn(Dispatchers.IO)
 
     companion object {
+        /**
+         * ART sets `os.arch` from the process's instruction set: "aarch64" / "x86_64" for 64-bit,
+         * "armv7l" / "armv8l" / "i686" for 32-bit processes (even on a 64-bit CPU).
+         */
+        fun processIs64Bit(osArch: String?): Boolean = osArch?.contains("64") == true
+
         /** Free the model after this long without use. */
         private const val IDLE_UNLOAD_MS = 3 * 60_000L
         /** How long to wait for the native side to wind down after a cancel. */
