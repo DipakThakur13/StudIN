@@ -145,7 +145,11 @@ class ScreenshotTour {
         launch(Routes.AI)
         if (clickText("Download AI Tutor")) { settle(); capture("light", "ai_download_confirm") }
         launch(Routes.AI)
-        if (clickText("Plan my revision")) { settle(10); capture("light", "ai_conversation") }
+        if (clickText("Plan my revision")) {
+            // Streaming uses chained delay()s; idleFor runs them through a window of virtual time.
+            repeat(4) { shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(3)); compose.waitForIdle() }
+            settle(); capture("light", "ai_conversation")
+        }
         launch(Routes.INSIGHTS); if (clickText("30D")) capture("light", "insights_30d"); if (clickText("12W")) capture("light", "insights_12w")
 
         val fc = ep.focusController()

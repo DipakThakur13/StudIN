@@ -2,10 +2,10 @@
 
 | File | Size | Use it for |
 |---|---|---|
-| [`StudIN-v2.1.0-arm64.apk`](StudIN-v2.1.0-arm64.apk) | 28.8 MB | **Recommended.** Almost every Android phone made since ~2017 (64-bit ARM). |
-| [`StudIN-v2.1.0-universal.apk`](StudIN-v2.1.0-universal.apk) | 70.7 MB | Any device: older 32-bit phones and Android Studio x86_64 emulators. |
+| [`StudIN-v2.2.0-arm64.apk`](StudIN-v2.2.0-arm64.apk) | 28.8 MB | **Recommended.** Almost every Android phone made since ~2017 (64-bit ARM). |
+| [`StudIN-v2.2.0-universal.apk`](StudIN-v2.2.0-universal.apk) | 70.7 MB | Any device: older 32-bit phones and Android Studio x86_64 emulators. |
 
-* Version **2.1.0** (versionCode 3) · package `com.studin.app` · Android 8.0+ (minSdk 26), targets Android 16 (SDK 36)
+* Version **2.2.0** (versionCode 4) · package `com.studin.app` · Android 8.0+ (minSdk 26), targets Android 16 (SDK 36)
 * Release build (R8-minified), signed with a **debug/test key** — not the Play Store key.
 * Checksums: [`SHA256SUMS.txt`](SHA256SUMS.txt)
 
@@ -30,7 +30,7 @@
 
 Or from a computer with USB debugging enabled:
 ```bash
-adb install -r StudIN-v2.1.0-arm64.apk
+adb install -r StudIN-v2.2.0-arm64.apk
 ```
 
 > If an older StudIN test build signed with a different key is installed, Android refuses the update
