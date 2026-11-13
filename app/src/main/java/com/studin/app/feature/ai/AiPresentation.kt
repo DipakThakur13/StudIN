@@ -17,12 +17,12 @@ fun engineStatus(llm: LlmState, useLlm: Boolean, generating: Boolean = false): E
     is LlmState.Loading -> EngineStatus(EngineStatusKind.LOADING, "Model loading", "Loading ${llm.name}…")
     is LlmState.Error -> EngineStatus(EngineStatusKind.ERROR, "Model error", llm.message)
     is LlmState.Installed ->
-        if (!useLlm) EngineStatus(EngineStatusKind.LITE, "Lite AI", "On-device model turned off in Model settings")
+        if (!useLlm) EngineStatus(EngineStatusKind.LITE, "Lite AI", "On-device model turned off in the AI Tutor menu")
         else EngineStatus(EngineStatusKind.INSTALLED, "Model installed", "${llm.name} loads on first use")
     is LlmState.Ready -> when {
-        !useLlm -> EngineStatus(EngineStatusKind.LITE, "Lite AI", "On-device model turned off in Model settings")
+        !useLlm -> EngineStatus(EngineStatusKind.LITE, "Lite AI", "On-device model turned off in the AI Tutor menu")
         generating -> EngineStatus(EngineStatusKind.PROCESSING, "Processing", "${llm.name} is writing a reply")
-        else -> EngineStatus(EngineStatusKind.READY, "On-device model", "${llm.name} is ready, fully offline")
+        else -> EngineStatus(EngineStatusKind.READY, "On-device model", "${llm.name} is ready, fully offline · ${if (llm.onGpu) "GPU" else "CPU"}")
     }
 }
 
@@ -64,8 +64,16 @@ fun formatReply(text: String): List<ReplyBlock> {
         val numbered = numberPrefix.find(raw)
         when {
             raw.isBlank() -> flushPara()
-            bullet != null -> { flushPara(); out += ReplyBlock.Bullet(raw.substring(bullet.range.last + 1).trim()) }
-            numbered != null -> { flushPara(); out += ReplyBlock.Numbered(numbered.groupValues[1], raw.substring(numbered.range.last + 1).trim()) }
+            // A marker with nothing after it ("-", "•", "3.") is noise, not an empty bullet.
+            raw.trim().let { it.length <= 3 && it.matches(Regex("[•\\-*]|\\d{1,2}[.)]")) } -> flushPara()
+            bullet != null -> {
+                flushPara()
+                raw.substring(bullet.range.last + 1).trim().takeIf { it.isNotEmpty() }?.let { out += ReplyBlock.Bullet(it) }
+            }
+            numbered != null -> {
+                flushPara()
+                raw.substring(numbered.range.last + 1).trim().takeIf { it.isNotEmpty() }?.let { out += ReplyBlock.Numbered(numbered.groupValues[1], it) }
+            }
             else -> { if (para.isNotEmpty()) para.append('\n'); para.append(raw.trimEnd()) }
         }
     }

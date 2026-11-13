@@ -85,4 +85,17 @@ class AiPresentationTest {
         assertEquals(ReplyBlock.Heading("Newton's laws"), blocks[0])
         assertEquals("Newton's laws\n• First: inertia\nF = ma", plainReply("## Newton's laws\n- **First:** inertia\n```\nF = ma\n```"))
     }
+
+    @Test fun emptyBulletsAreNotRendered() {
+        val blocks = formatReply("Intro\n-\n- Real point\n•\n3.\n1. First")
+        assertEquals(
+            listOf(ReplyBlock.Paragraph("Intro"), ReplyBlock.Bullet("Real point"), ReplyBlock.Numbered("1", "First")),
+            blocks,
+        )
+    }
+
+    @Test fun readyStatusSaysGpuOrCpu() {
+        assertTrue(engineStatus(LlmState.Ready("Qwen3 4B", 1, onGpu = true), useLlm = true).detail.endsWith("GPU"))
+        assertTrue(engineStatus(LlmState.Ready("Qwen2.5 1.5B", 1, onGpu = false), useLlm = true).detail.endsWith("CPU"))
+    }
 }

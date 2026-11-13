@@ -132,10 +132,15 @@ class ModelDownloaderTest {
     }
 
     @Test fun pinnedModelConstantsAreConsistent() {
-        assertTrue(GemmaModel.DOWNLOAD_URL.startsWith("https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/"))
-        assertTrue(GemmaModel.DOWNLOAD_URL.contains(GemmaModel.REVISION) && GemmaModel.DOWNLOAD_URL.endsWith(GemmaModel.FILE_NAME))
-        assertEquals(40, GemmaModel.REVISION.length)
-        assertEquals(64, GemmaModel.SHA256.length)
-        assertEquals("555 MB", GemmaModel.sizeLabel)
+        for (m in ModelCatalog.all) {
+            assertTrue(m.downloadUrl, m.downloadUrl.startsWith("https://huggingface.co/${m.repo}/resolve/${m.revision}/"))
+            assertTrue(m.downloadUrl.endsWith(m.fileName))
+            assertEquals(m.id, 40, m.revision.length)
+            assertTrue(m.id, Regex("^[0-9a-f]{64}$").matches(m.sha256))
+            assertEquals(m.fileName, m.runtime, ModelCatalog.runtimeFor(m.fileName))
+        }
+        assertEquals("1.6 GB", ModelCatalog.QWEN25_1_5B.sizeLabel)
+        assertEquals("2.3 GB", ModelCatalog.QWEN3_4B.sizeLabel)
+        assertEquals(ModelCatalog.all.size, ModelCatalog.all.map { it.id }.toSet().size)
     }
 }

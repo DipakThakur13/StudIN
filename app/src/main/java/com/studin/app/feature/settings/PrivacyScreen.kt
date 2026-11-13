@@ -36,7 +36,7 @@ internal data class PolicySection(val title: String, val points: List<String>)
 internal val privacySections = listOf(
     PolicySection("Your data stays on your device", listOf(
         "StudIN never uploads your data. Everything you study, plan, chat or track is processed and stored on this phone.",
-        "The app connects to the internet for one thing only: downloading the optional AI Tutor model (Gemma 3 1B) from Hugging Face when you tap Download.",
+        "The app connects to the internet for one thing only: downloading the optional AI Tutor model (Qwen, picked for your phone's memory) from Hugging Face when you tap Download.",
         "Profile, syllabus, flashcards, focus sessions and insights are stored in a private database inside the app.",
         "There are no ads, no analytics SDKs and no accounts.",
     )),
@@ -55,8 +55,8 @@ internal val privacySections = listOf(
     )),
     PolicySection("On-device AI", listOf(
         "Lite AI and the optional language model run entirely on your phone.",
-        "The AI Tutor model is downloaded from the LiteRT community repository on Hugging Face (where Google publishes Gemma for phones), pinned to a fixed version and checked against its published SHA-256 before use.",
-        "Downloading it needs your own free Hugging Face read token (Google requires accepting the Gemma licence). The token is sent only to huggingface.co to authorise that download and is cleared when it finishes. Your study data is never sent.",
+        "The AI Tutor model (Qwen2.5 1.5B on 4–6 GB phones, Qwen3 4B on 8 GB+) is downloaded from the LiteRT community repository on Hugging Face, pinned to a fixed version and checked against its published SHA-256 before use.",
+        "No account, sign-in or token is needed — the request carries nothing about you. Your study data is never sent. The model then runs entirely on this phone (GPU or CPU).",
         "Tutor chats are kept in memory only and disappear when you leave AI Tutor.",
     )),
     PolicySection("Retention", listOf(

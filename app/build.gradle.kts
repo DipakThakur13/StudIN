@@ -1,17 +1,4 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.util.Properties
-
-/**
- * Hugging Face read token bundled into the build for the one-tap Gemma download. Never commit it:
- * Hugging Face auto-revokes tokens found in GitHub repos. Sources, first match wins:
- * local.properties `hf.token`, Gradle property `studin.hfToken`, env var `STUDIN_HF_TOKEN`.
- * Empty → the app asks the student for their own token instead.
- */
-val bundledHfToken: String = run {
-    val local = Properties().apply { rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) } }
-    (local.getProperty("hf.token") ?: project.findProperty("studin.hfToken") as String? ?: System.getenv("STUDIN_HF_TOKEN") ?: "")
-        .trim().also { require(it.isEmpty() || Regex("^hf_[A-Za-z0-9]{20,}$").matches(it)) { "hf.token doesn't look like a Hugging Face token" } }
-}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -29,11 +16,10 @@ android {
         applicationId = "com.studin.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "2.2.0"
+        versionCode = 5
+        versionName = "2.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
-        buildConfigField("String", "HF_TOKEN", "\"$bundledHfToken\"")
         // Default: universal APK (phones + x86_64 emulators). Override for a smaller phone-only
         // build: ./gradlew assembleRelease -Pstudin.abis=arm64-v8a
         ndk {
@@ -131,6 +117,8 @@ dependencies {
 
     // On-device AI
     implementation(libs.mediapipe.tasks.genai)
+    // LiteRT-LM runs the Qwen models (.litertlm) on GPU (OpenCL) or CPU. Built with Kotlin 2.4 metadata → Kotlin ≥ 2.3 here.
+    implementation(libs.litertlm.android)
     implementation(libs.mlkit.text.recognition)
 
     testImplementation(libs.junit)

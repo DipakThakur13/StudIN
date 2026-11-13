@@ -11,11 +11,11 @@ import kotlin.coroutines.cancellation.CancellationException
 /** Why a model download could not complete. [retryable] failures may succeed on a later attempt. */
 sealed class DownloadFailure(message: String, val retryable: Boolean) : IOException(message) {
     /** No token was given and the repository is gated. */
-    class TokenRequired : DownloadFailure("A Hugging Face access token is needed to download Gemma.", false)
+    class TokenRequired : DownloadFailure("This model needs a Hugging Face access token.", false)
     /** The token was rejected (wrong, expired or revoked). */
     class TokenRejected : DownloadFailure("Hugging Face rejected that access token. Create a new “Read” token and try again.", false)
-    /** Signed in, but the Gemma licence hasn't been accepted for this account yet. */
-    class LicenceNotAccepted : DownloadFailure("Accept Google's Gemma licence on the model page first (step 1), then try again.", false)
+    /** Signed in, but the model's licence hasn't been accepted for this account yet (gated repos). */
+    class LicenceNotAccepted : DownloadFailure("Accept the model's licence on its Hugging Face page first, then try again.", false)
     class NotFound : DownloadFailure("The model file wasn't found on Hugging Face.", false)
     class Checksum(expected: String, actual: String) :
         DownloadFailure("The downloaded file failed verification (SHA-256 ${actual.take(12)}… ≠ ${expected.take(12)}…). It was deleted.", false)
@@ -24,7 +24,7 @@ sealed class DownloadFailure(message: String, val retryable: Boolean) : IOExcept
 }
 
 /**
- * Minimal, dependency-free resumable downloader for the Gemma model (pure JVM, unit-tested).
+ * Minimal, dependency-free resumable downloader for the AI Tutor model (pure JVM, unit-tested).
  *
  * * The bearer token is sent **only** to the Hugging Face resolve URL; Hugging Face answers with a
  *   redirect to a signed CDN URL, which is fetched without credentials.

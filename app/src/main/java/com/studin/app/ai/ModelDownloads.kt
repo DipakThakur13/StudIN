@@ -12,10 +12,8 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,27 +25,28 @@ sealed interface DownloadUi {
     data class Running(val bytes: Long, val total: Long, val waiting: Boolean) : DownloadUi {
         val fraction: Float get() = if (total > 0) (bytes.toFloat() / total).coerceIn(0f, 1f) else 0f
     }
-    data class Failed(val message: String, val needsToken: Boolean) : DownloadUi
+    data class Failed(val message: String) : DownloadUi
     data object Done : DownloadUi
 }
 
-/** Starts, cancels and observes the Gemma download job. */
+/** Starts, cancels and observes the AI model download job. */
 @Singleton
 class ModelDownloads @Inject constructor(@ApplicationContext private val context: Context) {
     private val wm get() = WorkManager.getInstance(context)
+
+    init {
+        // The v2.2 Gemma job (token-based) is obsolete; its worker would fail anyway.
+        runCatching { wm.cancelUniqueWork(LEGACY_UNIQUE_NAME) }
+    }
 
     val state: Flow<DownloadUi> = wm.getWorkInfosForUniqueWorkFlow(ModelDownloadWorker.UNIQUE_NAME).map { infos ->
         toUi(infos.lastOrNull())
     }
 
-    /** Validates the token against Hugging Face (fast, specific errors) before starting. */
-    suspend fun verifyAccess(token: String): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching { ModelDownloader().checkAccess(GemmaModel.DOWNLOAD_URL, token) }
-    }
-
-    fun start(token: String) {
+    fun start(model: TutorModel) {
         val request = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
-            .setInputData(workDataOf(ModelDownloadWorker.KEY_TOKEN to token.trim()))
+            .setInputData(workDataOf(ModelDownloadWorker.KEY_MODEL_ID to model.id))
+            .addTag(ModelDownloadWorker.TAG_PREFIX + model.id)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
@@ -58,10 +57,10 @@ class ModelDownloads @Inject constructor(@ApplicationContext private val context
     /** Stops the download and frees the partial file. */
     fun cancel() {
         wm.cancelUniqueWork(ModelDownloadWorker.UNIQUE_NAME)
-        ModelDownloadWorker.partFile(context).delete()
+        ModelDownloadWorker.downloadsDir(context).listFiles()?.forEach { it.delete() }
     }
 
-    /** Forget finished jobs (their input held the token) once the UI has seen the result. */
+    /** Forget finished jobs once the UI has seen the result. */
     fun clearFinished() { wm.pruneWork() }
 
     fun isMetered(): Boolean = runCatching {
@@ -69,20 +68,27 @@ class ModelDownloads @Inject constructor(@ApplicationContext private val context
     }.getOrDefault(false)
 
     companion object {
-        fun toUi(info: WorkInfo?): DownloadUi = when (info?.state) {
-            null, WorkInfo.State.CANCELLED -> DownloadUi.Idle
-            WorkInfo.State.SUCCEEDED -> DownloadUi.Done
-            WorkInfo.State.FAILED -> DownloadUi.Failed(
-                info.outputData.getString(ModelDownloadWorker.KEY_ERROR) ?: "Download failed",
-                info.outputData.getBoolean(ModelDownloadWorker.KEY_NEEDS_TOKEN, false),
-            )
-            WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> DownloadUi.Running(
-                info.progress.getLong(ModelDownloadWorker.KEY_BYTES, 0), GemmaModel.SIZE_BYTES, waiting = true,
-            )
-            WorkInfo.State.RUNNING -> DownloadUi.Running(
-                info.progress.getLong(ModelDownloadWorker.KEY_BYTES, 0),
-                info.progress.getLong(ModelDownloadWorker.KEY_TOTAL, GemmaModel.SIZE_BYTES), waiting = false,
-            )
+        private const val LEGACY_UNIQUE_NAME = "studin-gemma-download"
+
+        /** The catalog model a job downloads, read from its tag. */
+        fun modelOf(info: WorkInfo): TutorModel? = info.tags.firstNotNullOfOrNull { tag ->
+            if (tag.startsWith(ModelDownloadWorker.TAG_PREFIX)) ModelCatalog.byId(tag.removePrefix(ModelDownloadWorker.TAG_PREFIX)) else null
+        }
+
+        fun toUi(info: WorkInfo?): DownloadUi {
+            val total = info?.let { modelOf(it)?.sizeBytes } ?: 0L
+            return when (info?.state) {
+                null, WorkInfo.State.CANCELLED -> DownloadUi.Idle
+                WorkInfo.State.SUCCEEDED -> DownloadUi.Done
+                WorkInfo.State.FAILED -> DownloadUi.Failed(info.outputData.getString(ModelDownloadWorker.KEY_ERROR) ?: "Download failed")
+                WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> DownloadUi.Running(
+                    info.progress.getLong(ModelDownloadWorker.KEY_BYTES, 0), total, waiting = true,
+                )
+                WorkInfo.State.RUNNING -> DownloadUi.Running(
+                    info.progress.getLong(ModelDownloadWorker.KEY_BYTES, 0),
+                    info.progress.getLong(ModelDownloadWorker.KEY_TOTAL, total), waiting = false,
+                )
+            }
         }
     }
 }

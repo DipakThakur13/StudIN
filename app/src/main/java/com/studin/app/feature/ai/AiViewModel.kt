@@ -9,6 +9,8 @@ import com.studin.app.ai.DownloadUi
 import com.studin.app.ai.ModelDownloads
 import com.studin.app.ai.ImportProgress
 import com.studin.app.ai.LlmState
+import com.studin.app.ai.ModelCatalog
+import com.studin.app.ai.TutorModel
 import com.studin.app.ai.OnDeviceLlm
 import com.studin.app.ai.StudyAssistant
 import com.studin.app.core.data.prefs.AppSettings
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -40,12 +43,6 @@ data class ChatMessage(
     val prompt: String? = null,
 )
 
-sealed interface AccessCheck {
-    data object Idle : AccessCheck
-    data object Checking : AccessCheck
-    data class Error(val message: String) : AccessCheck
-}
-
 data class ModelUi(
     val importing: Boolean = false,
     val progress: ImportProgress? = null,
@@ -63,19 +60,25 @@ class AiViewModel @Inject constructor(
     val llmState: StateFlow<LlmState> = assistant.llmState
     val settings: StateFlow<AppSettings> = prefs.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())
 
-    /** False on 32-bit or < 4 GB RAM phones: the Gemma download is not offered there. */
+    /** The model offered for this phone's RAM: Qwen3 4B (8 GB+), Qwen2.5 1.5B (4–6 GB), or null. */
+    val recommended: TutorModel? = llm.recommended
+    /** Total RAM as the phone reports it, for "picked for your phone (8 GB RAM)". */
+    val ramLabel: String = ModelCatalog.ramLabel(llm.totalRamBytes)
+    /** False on 32-bit or < 4 GB RAM phones: no model download is offered there. */
     val deviceSupportsModel: Boolean = llm.deviceSupported()
 
-    // ---- Gemma download
+    /** The catalog model currently installed (null for none or a user-imported file). */
+    val installedModel: StateFlow<TutorModel?> = prefs.settings
+        .map { ModelCatalog.byFileName(it.aiModelFile) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // ---- Model download (public Hugging Face repositories, no account needed)
     val download: StateFlow<DownloadUi> = downloads.state.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DownloadUi.Idle)
-    private val _access = MutableStateFlow<AccessCheck>(AccessCheck.Idle)
-    /** Result of validating the Hugging Face token before the download starts. */
-    val access: StateFlow<AccessCheck> = _access.asStateFlow()
 
     init {
         // Load the model in the background while the student types, so the first answer is quicker.
         llm.prewarm()
-        // When a download finishes: forget the job (its input held the token) and warm the model up.
+        // When a download finishes: forget the job and warm the new model up.
         viewModelScope.launch {
             download.collect { d ->
                 if (d is DownloadUi.Done) { downloads.clearFinished(); llm.refreshState(); llm.ensureLoaded() }
@@ -83,39 +86,11 @@ class AiViewModel @Inject constructor(
         }
     }
 
-    /** Check the token with Hugging Face, then start the background download. */
-    fun startDownload(token: String, onStarted: () -> Unit) {
-        if (_access.value == AccessCheck.Checking || token.isBlank()) return
-        _access.value = AccessCheck.Checking
-        viewModelScope.launch {
-            downloads.verifyAccess(token)
-                .onSuccess { downloads.start(token); _access.value = AccessCheck.Idle; onStarted() }
-                .onFailure { _access.value = AccessCheck.Error(it.message ?: "Couldn't reach Hugging Face. Check your connection.") }
-        }
-    }
-
-    /** One-tap download with the token bundled into this build; [onNeedsOwnToken] if it can't be used. */
-    fun startBundledDownload(onNeedsOwnToken: () -> Unit) {
-        val token = com.studin.app.ai.GemmaModel.bundledToken ?: return onNeedsOwnToken()
-        if (_access.value == AccessCheck.Checking) return
-        _access.value = AccessCheck.Checking
-        viewModelScope.launch {
-            downloads.verifyAccess(token)
-                .onSuccess { downloads.start(token); _access.value = AccessCheck.Idle }
-                .onFailure {
-                    // Bundled token revoked / not licensed: let the student use their own account instead.
-                    _access.value = AccessCheck.Error(
-                        if (it is com.studin.app.ai.DownloadFailure) "The built-in download key isn't working right now. You can use your own free Hugging Face account instead."
-                        else it.message ?: "Couldn't reach Hugging Face. Check your connection.",
-                    )
-                    if (it is com.studin.app.ai.DownloadFailure) onNeedsOwnToken()
-                }
-        }
-    }
-
-    fun resetAccess() { _access.value = AccessCheck.Idle }
+    /** Start the background download of the model picked for this phone. */
+    fun startDownload() { recommended?.let(downloads::start) }
     fun cancelDownload() = downloads.cancel()
     fun isMetered(): Boolean = downloads.isMetered()
+    fun setGpuEnabled(v: Boolean) = viewModelScope.launch { llm.setGpuEnabled(v) }
 
     // ---- Tutor (kept in memory only)
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())

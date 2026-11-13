@@ -9,6 +9,18 @@
 * Release build (R8-minified), signed with a **debug/test key** — not the Play Store key.
 * Checksums: [`SHA256SUMS.txt`](SHA256SUMS.txt)
 
+## What's new in 2.3.0
+* **AI model picked for your phone** — StudIN checks the phone's RAM: **8 GB+ → Qwen3 4B** (2.3 GB),
+  **4–6 GB → Qwen2.5 1.5B** (1.6 GB). Both are larger than Gemma 3 1B and score well above it on knowledge benchmarks (they can still make mistakes). Under 4 GB, Lite AI.
+* **GPU acceleration** — the model runs on the phone's GPU when it supports it, otherwise on the CPU.
+  If the GPU ever crashes, StudIN switches that model to the CPU automatically. The AI Tutor card shows
+  "GPU accelerated" or "on the CPU"; ⋮ → *Use GPU acceleration* turns it off/on.
+* **No Hugging Face token** — the Qwen models are public (Apache 2.0); the download needs no account.
+  Already have Gemma from 2.2? You'll see **Upgrade to Qwen…**; Gemma keeps working until the new model is verified.
+* **Tutor fixes** — "linux os" right after another question no longer mixes in the old answer, code
+  questions get a complete code block, made-up links and empty bullet points are removed, flashcard
+  generation with the model works again.
+
 ## What's new in 2.2.0
 * **Controlled AI Tutor** — the app now routes "who are you", greetings, revision plans, quizzes,
   stress and off-topic messages itself; only real study questions reach Gemma, with strict rules,
@@ -45,12 +57,14 @@ adb install -r StudIN-v2.2.0-arm64.apk
    The break screen should appear with *Back to studying*, an earned break and an emergency exit.
 5. **Study** — review flashcards (tap to flip, grade), take a quiz, import a CSV, generate cards
    from notes or a photo (Study → AI cards).
-6. **AI Tutor** — try the four quick actions, then tap **Download AI Tutor** → confirm. Gemma 3 1B
-   (555 MB) downloads in the background with a notification, is verified, and the tutor switches to it.
-   Wi-Fi recommended.
+6. **AI Tutor** — try the four quick actions, then tap **Download AI Tutor** → confirm. The card names
+   the model picked for your phone (Qwen3 4B on 8 GB+, Qwen2.5 1.5B on 4–6 GB). It downloads in the
+   background with a notification, is verified, and the tutor switches to it — the card then says
+   whether it runs on the GPU or the CPU. Try "linux os", "binary search code in python", "what is GATE".
+   Wi-Fi recommended (1.6–2.3 GB).
 7. **Insights** — switch 7D / 30D / 12W after a few sessions.
 
-Nothing you study is uploaded. The only network use is the optional **Download AI Tutor** (Gemma 3 1B, 555 MB).
+Nothing you study is uploaded. The only network use is the optional **Download AI Tutor** (Qwen, 1.6–2.3 GB, no account needed).
 
 ## Build it yourself
 ```bash

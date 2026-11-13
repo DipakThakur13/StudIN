@@ -60,7 +60,9 @@ class StudyAssistant @Inject constructor(
                 NOTES:
                 ${clean.take(2_400)}
             """.trimIndent()
-            val out = runCatching { llm.generate(prompt, temperature = 0.2f).lastOrNull()?.let { ReplyGuard.clean(it.text) } }.getOrNull()
+            val out = runCatching {
+                llm.generate(prompt, temperature = 0.2f, maxOutputTokens = 640).lastOrNull()?.let { ReplyGuard.clean(it.text, qaFormat = true) }
+            }.getOrNull()
             val cards = out?.let { LiteAi.parseQaBlocks(it, max) }.orEmpty()
             if (cards.size >= 2) return CardGenResult(cards, AiEngine.LLM, keywords)
         }
@@ -90,7 +92,7 @@ class StudyAssistant @Inject constructor(
         //    previous exchange only for genuine follow-ups (prevents answers bleeding across).
         val previous = history.windowed(2).lastOrNull { it[0].fromUser && !it[1].fromUser }
             ?.takeIf { TutorGuard.isFollowUp(q) }?.let { TutorGuard.Turn(it[0].text, it[1].text) }
-        val maxWords = if (intent == TutorGuard.Intent.SUMMARIZE) 150 else 120
+        val maxWords = TutorGuard.maxWordsFor(q, intent)
         val prompt = TutorGuard.buildPrompt(q, intent, profiles.get()?.exam?.displayName, context, previous, maxWords)
 
         // 3) Guarded generation: cleaned while streaming, stopped at the length cap or on loops.
@@ -99,12 +101,25 @@ class StudyAssistant @Inject constructor(
             llm.generate(
                 prompt,
                 temperature = if (intent == TutorGuard.Intent.SUMMARIZE) 0.2f else 0.3f,
+                // Room for the word budget plus code/markdown tokens; the guard usually stops sooner.
+                maxOutputTokens = if (maxWords > 150) 768 else 512,
                 stopWhen = { ReplyGuard.shouldStop(ReplyGuard.clean(it), maxWords) },
             ).collect { chunk ->
                 val text = if (chunk.done) ReplyGuard.finish(chunk.text, truncated = chunk.stoppedEarly) else ReplyGuard.clean(chunk.text)
                 if (text.isNotBlank()) { produced = true; emit(text to AiEngine.LLM) }
             }
         }.catch { if (!produced) emitAll(liteStream(q, context)) else throw it })
+    }
+
+    private fun identityModelLine(): String {
+        val name = when (val st = llm.state.value) {
+            is LlmState.Ready -> st.name
+            is LlmState.Installed -> st.name
+            is LlmState.Loading -> st.name
+            else -> null
+        }
+        return if (name != null) "• Fuller explanations come from the $name model, running offline on this phone.\n"
+        else llm.recommended?.let { "• Download the AI Tutor model (${it.displayName}) for fuller explanations — it then works offline.\n" }.orEmpty()
     }
 
     /** Fixed, honest replies for messages the model shouldn't improvise. */
@@ -125,8 +140,7 @@ class StudyAssistant @Inject constructor(
             "I'm StudIN's AI Tutor — a study assistant that runs entirely on this phone.\n\n" +
                 "• I explain concepts, summarise your notes and help turn them into flashcards.\n" +
                 "• I plan your revision from your syllabus and due cards.\n" +
-                (if (llm.state.value is LlmState.Ready || llm.state.value is LlmState.Installed) "• Fuller explanations come from Google's Gemma 3 1B model, running offline.\n"
-                else "• Download the AI Tutor model (Gemma 3 1B) for fuller explanations — it then works offline.\n") +
+                identityModelLine() +
                 "\nI can make mistakes, so please double-check important facts with your textbook."
         TutorGuard.Intent.QUIZ ->
             "Let's test you with real questions from your own flashcards:\n\n" +
@@ -201,10 +215,10 @@ class StudyAssistant @Inject constructor(
                     "• After the session, do 5 quick flashcards: active recall beats re-reading.\n" +
                     "• Sleep and water matter more than one extra hour.\n\nYou've got this. 💪"
             context.isNotEmpty() -> "From your own cards and syllabus:\n\n" + context.joinToString("\n") { "• $it" } +
-                "\n\nWant more depth? Tap Download AI Tutor on the AI Tutor screen to get Gemma 3 1B for full explanations."
+                "\n\nWant more depth? Tap Download AI Tutor on the AI Tutor screen for full explanations."
             else -> "I couldn't find this in your cards or syllabus yet.\n\n" +
                 "• Add notes in Study → Generate cards and I'll turn them into flashcards.\n" +
-                "• Download the full AI Tutor (Gemma 3 1B) on the AI Tutor screen for open-ended explanations – it then runs fully offline.\n\n" +
+                "• Download the full AI Tutor on the AI Tutor screen for open-ended explanations – it then runs fully offline.\n\n" +
                 "Tip: ask me \"what should I study today?\" for a plan."
         }
     }

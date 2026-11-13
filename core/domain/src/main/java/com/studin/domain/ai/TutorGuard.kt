@@ -3,10 +3,12 @@ package com.studin.domain.ai
 import com.studin.domain.classifier.TextNormalizer
 
 /**
- * App-side control layer around the small on-device language model (Gemma 3 1B).
+ * App-side control layer around the on-device language model (Qwen2.5 1.5B / Qwen3 4B, or the
+ * older Gemma 3 1B).
  *
- * A 1B model is good at explaining and summarising but drifts, over-answers and invents facts
- * when left unconstrained. StudIN therefore decides *in code* what the model is allowed to do:
+ * Small models are good at explaining and summarising but drift, over-answer and invent facts
+ * (names, dates, links) when left unconstrained. StudIN therefore decides *in code* what the
+ * model is allowed to do:
  *  1. [route] answers identity / greeting / planning / quiz / wellbeing / off-topic / safety
  *     messages deterministically – the model never sees them;
  *  2. [buildPrompt] gives the model one clean instruction turn whose rules are never truncated;
@@ -68,13 +70,39 @@ object TutorGuard {
         return Intent.STUDY
     }
 
-    /** Short follow-ups ("give an example", "why?", "explain it more") reuse the previous question. */
+    private val followPronouns = setOf("it", "this", "that", "they", "them", "its", "these", "those", "he", "she", "his", "her")
+    private val followWords = setOf(
+        "more", "again", "example", "examples", "elaborate", "continue", "simpler", "simply", "shorter", "detail",
+        "detailed", "another", "also", "else", "hindi", "hinglish",
+    )
+    private val followShort = setOf("why", "how", "really", "so")
+
+    /**
+     * Follow-ups ("give an example", "why?", "explain it more") reuse the previous question.
+     * A short *new* topic ("linux os", "binary search") is not a follow-up: it needs a cue word.
+     */
     fun isFollowUp(question: String): Boolean {
         val q = TextNormalizer.normalize(question)
         val words = q.split(' ').filter { it.isNotBlank() }
         if (words.isEmpty() || words.size > 12) return false
-        val cues = listOf("it", "this", "that", "they", "them", "its", "more", "again", "example", "examples", "why", "how", "elaborate", "explain more", "continue", "simpler", "shorter", "hindi", "detail", "also", "another")
-        return words.size <= 3 || words.any { it in cues }
+        if (words.size <= 2 && words.any { it in followShort }) return true // "why?", "but why", "how so"
+        return words.any { it in followPronouns || it in followWords } || q.startsWith("what about ") || q.startsWith("and ")
+    }
+
+    private val codeCue = Regex(
+        "\\b(code|coding|program|programs|programme|function|syntax|implement|implementation|script|snippet|pseudocode|" +
+            "python|java|javascript|kotlin|sql|html|css|print|loop|array|recursion)\\b|\\bc\\+\\+|\\bc program",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /** The student wants code: the answer gets a bigger budget so the code block isn't cut. */
+    fun wantsCode(question: String): Boolean = codeCue.containsMatchIn(question)
+
+    /** Word budget for an answer. */
+    fun maxWordsFor(question: String, intent: Intent): Int = when {
+        intent == Intent.SUMMARIZE -> 150
+        wantsCode(question) -> 220
+        else -> 120
     }
 
     data class Turn(val question: String, val answer: String)
@@ -90,7 +118,7 @@ object TutorGuard {
         examName: String?,
         notes: List<String> = emptyList(),
         previous: Turn? = null,
-        maxWords: Int = if (intent == Intent.SUMMARIZE) 150 else 120,
+        maxWords: Int = maxWordsFor(question, intent),
         maxChars: Int = 2_000,
     ): String {
         val rules = if (intent == Intent.SUMMARIZE) {
@@ -99,14 +127,16 @@ Summarise the student's notes below.
 Rules:
 - Use only information that is in the notes. Do not add new facts.
 - Give at most 6 short bullet points, then one line starting "Key terms:" with up to 5 terms.
+- Do not include website links or URLs.
 - Stay under $maxWords words. No introduction and no closing remarks."""
         } else {
             """You are StudIN, a careful study tutor${examName?.let { " for a $it student" } ?: ""}.
 Rules:
 - Answer only the question below. Do not add extra sections, tasks or follow-up questions.
 - Stay under $maxWords words. Use simple English (Hinglish is fine if the student writes Hinglish).
-- Use short bullet points for lists. For code, give one short code block with a one-line explanation.
+- Use short bullet points for lists. If the student asks for code, give one complete code block in a fenced ``` block, then a one-line explanation.
 - Only state facts you are sure of. Never invent numbers, names, dates, formulas or sources.
+- Do not include website links or URLs.
 - If you are not sure, say "I'm not sure about this — please check your textbook." """.trimEnd()
         }
         fun assemble(ctxNotes: List<String>, prev: Turn?, q: String) = buildString {
@@ -140,19 +170,32 @@ Rules:
 
 /** Cleans and bounds model output, both while streaming and at the end. */
 object ReplyGuard {
-    private val specialTokens = Regex("<(start_of_turn|end_of_turn|eos|bos|pad)>|</?s>")
+    private val specialTokens = Regex("<(start_of_turn|end_of_turn|eos|bos|pad)>|</?s>|<\\|[a-z_]{2,20}\\|>")
+    /** Qwen3 reasoning blocks: StudIN switches thinking off; this is the backstop. */
+    private val thinkBlock = Regex("<think>.*?</think>", RegexOption.DOT_MATCHES_ALL)
+    private val url = Regex("(https?://|www\\.)\\S+", RegexOption.IGNORE_CASE)
+    private val mdLink = Regex("\\[([^\\]]{1,80})]\\((https?://|www\\.)[^)]*\\)?", RegexOption.IGNORE_CASE)
+    private val emptyBullet = Regex("^\\s*([-*•]|\\d{1,2}[.)])\\s*$")
     /** The model starting a new conversational turn on its own = everything after is invented. */
     private val roleEcho = Regex("(?m)^\\s*(Student|User|Question|Q|Human|Tutor|Assistant|StudIN|Model)\\s*:")
     private val leadingRole = Regex("^\\s*(model\\s*\\n|Tutor\\s*:|Assistant\\s*:|StudIN\\s*:|Answer\\s*:)\\s*", RegexOption.IGNORE_CASE)
 
     fun wordCount(text: String): Int = text.split(Regex("\\s+")).count { it.isNotBlank() }
 
-    /** Cleaned text for display while streaming (cheap, idempotent). */
-    fun clean(raw: String): String {
-        var t = raw.replace(specialTokens, "").replace("\r", "")
+    /**
+     * Cleaned text for display while streaming (cheap, idempotent). [qaFormat] keeps "Q:"/"A:"
+     * lines (flashcard generation) instead of treating them as an invented next turn.
+     */
+    fun clean(raw: String, qaFormat: Boolean = false): String {
+        var t = raw.replace(thinkBlock, "").replace(specialTokens, "").replace("\r", "")
+        // An unfinished reasoning block: nothing after it is an answer yet.
+        t.indexOf("<think>").takeIf { it >= 0 }?.let { t = t.substring(0, it) }
+        t = t.replace("</think>", "")
         t = t.replace(leadingRole, "")
         // Cut at a role label that appears after the first line (a fabricated next turn).
-        roleEcho.findAll(t).firstOrNull { it.range.first > 0 }?.let { t = t.substring(0, it.range.first) }
+        if (!qaFormat) roleEcho.findAll(t).firstOrNull { it.range.first > 0 }?.let { t = t.substring(0, it.range.first) }
+        t = stripLinks(t)
+        t = t.split('\n').filterNot { emptyBullet.matches(it) }.joinToString("\n")
         t = dedupeLines(t)
         t = cutLoop(t)
         return t.replace(Regex("\n{3,}"), "\n\n").trim()
@@ -183,6 +226,23 @@ object ReplyGuard {
     }
 
     private fun insideCodeBlock(t: String) = Regex("```").findAll(t).count() % 2 == 1
+
+    /**
+     * Small models invent plausible-looking links. Markdown links keep their text; any sentence
+     * that still carries a URL is dropped. Code blocks are left alone.
+     */
+    private fun stripLinks(t: String): String {
+        if (!url.containsMatchIn(t)) return t
+        var inCode = false
+        return t.split('\n').mapNotNull { line ->
+            if (line.trimStart().startsWith("```")) { inCode = !inCode; return@mapNotNull line }
+            if (inCode || !url.containsMatchIn(line)) return@mapNotNull line
+            val linked = line.replace(mdLink) { m -> if (url.containsMatchIn(m.groupValues[1])) "" else m.groupValues[1] }
+            if (!url.containsMatchIn(linked)) return@mapNotNull linked
+            val kept = linked.split(Regex("(?<=[.!?])\\s+")).filterNot { url.containsMatchIn(it) }.joinToString(" ")
+            kept.takeIf { it.isNotBlank() && !emptyBullet.matches(it) && it.trim().length > 2 }
+        }.joinToString("\n")
+    }
 
     private fun dedupeLines(t: String): String {
         val out = ArrayList<String>()

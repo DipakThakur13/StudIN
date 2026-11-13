@@ -11,37 +11,26 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.sample
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import com.studin.app.ai.DownloadUi
-import com.studin.app.ai.GemmaModel
-import com.studin.app.core.designsystem.StudINBottomSheet
+import com.studin.app.ai.ModelCatalog
+import com.studin.app.ai.ModelRuntime
+import com.studin.app.ai.TutorModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -62,44 +51,29 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.EventNote
-import androidx.compose.material.icons.automirrored.rounded.FactCheck
-import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Memory
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Quiz
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material.icons.rounded.Upload
-import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -123,41 +97,31 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studin.app.R
 import com.studin.app.ai.AiEngine
 import com.studin.app.ai.LlmState
-import com.studin.app.core.data.db.ClassificationDecisionEntity
-import com.studin.app.core.designsystem.Motion
 import com.studin.app.core.designsystem.Spacing
 import com.studin.app.core.designsystem.StudINBadge
 import com.studin.app.core.designsystem.StudINCard
-import com.studin.app.core.designsystem.StudINChip
 import com.studin.app.core.designsystem.StudINDialog
 import com.studin.app.core.designsystem.StudINErrorState
 import com.studin.app.core.designsystem.StudINIconButton
 import com.studin.app.core.designsystem.StudINIconTile
 import com.studin.app.core.designsystem.StudINIllustration
 import com.studin.app.core.designsystem.StudINLinearProgress
-import com.studin.app.core.designsystem.StudINOutlinedButton
 import com.studin.app.core.designsystem.StudINPrimaryButton
 import com.studin.app.core.designsystem.StudINScaffold
 import com.studin.app.core.designsystem.StudINSectionHeader
-import com.studin.app.core.designsystem.StudINSegmentedTabs
 import com.studin.app.core.designsystem.StudINShapes
 import com.studin.app.core.designsystem.StudINTextButton
 import com.studin.app.core.designsystem.StudINTextField
 import com.studin.app.core.designsystem.StudINTheme
-import com.studin.app.core.designsystem.motionDuration
 import com.studin.app.core.designsystem.screenContentPadding
 import com.studin.app.core.designsystem.studinContentWidth
 import com.studin.app.ui.navigation.Routes
-import com.studin.domain.model.Verdict
-import java.text.DateFormat
-import java.util.Date
 
 @Composable
 fun AiScreen(onNavigate: (String) -> Unit, vm: AiViewModel = hiltViewModel()) {
@@ -165,10 +129,9 @@ fun AiScreen(onNavigate: (String) -> Unit, vm: AiViewModel = hiltViewModel()) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val thinking by vm.thinking.collectAsStateWithLifecycle()
     val download by vm.download.collectAsStateWithLifecycle()
-    var showSheet by rememberSaveable { mutableStateOf(false) }
+    val installedModel by vm.installedModel.collectAsStateWithLifecycle()
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
     var confirmDownload by rememberSaveable { mutableStateOf(false) }
-    val access by vm.access.collectAsStateWithLifecycle()
     val status = engineStatus(llm, settings.aiUseLlm, thinking)
     val installed = llm is LlmState.Installed || llm is LlmState.Loading || llm is LlmState.Ready
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) vm.importModel(uri) }
@@ -183,7 +146,9 @@ fun AiScreen(onNavigate: (String) -> Unit, vm: AiViewModel = hiltViewModel()) {
                 container = StudINTheme.colors.aiContainer, content = StudINTheme.colors.ai, icon = Icons.Rounded.Download,
             ) else EngineBadge(status)
             ModelMenu(
-                installed = installed, useLlm = settings.aiUseLlm,
+                installed = installed, modelName = modelName(llm), useLlm = settings.aiUseLlm,
+                gpuCapable = installedModel?.runtime == ModelRuntime.LITERT_LM || (installed && installedModel == null && settings.aiModelFile?.endsWith(".litertlm") == true),
+                gpuEnabled = settings.aiGpuEnabled, onGpu = vm::setGpuEnabled,
                 onUseLlm = vm::setUseLlm, onImport = { importer.launch(arrayOf("*/*")) }, onRemove = { confirmRemove = true },
             )
         },
@@ -192,39 +157,37 @@ fun AiScreen(onNavigate: (String) -> Unit, vm: AiViewModel = hiltViewModel()) {
             TutorTab(vm, onNavigate, downloading = download is DownloadUi.Running) {
                 ModelCard(
                     llm = llm, useLlm = settings.aiUseLlm, download = download, supported = vm.deviceSupportsModel,
-                    checking = access == AccessCheck.Checking && !showSheet,
-                    onDownload = {
-                        vm.resetAccess()
-                        val needsOwn = (download as? DownloadUi.Failed)?.needsToken == true
-                        if (GemmaModel.bundledToken != null && !needsOwn) confirmDownload = true else showSheet = true
-                    },
+                    recommended = vm.recommended, installedModel = installedModel, ramLabel = vm.ramLabel,
+                    onDownload = { confirmDownload = true },
                     onCancel = vm::cancelDownload,
                     onUseLlm = { vm.setUseLlm(true) },
                 )
             }
         }
     }
-    if (showSheet) DownloadSheet(vm, onDismiss = { showSheet = false })
-    if (confirmDownload) {
+    val offer = vm.recommended
+    if (confirmDownload && offer != null) {
         val context = LocalContext.current
         val metered = remember { vm.isMetered() }
         StudINDialog(
-            title = "Download AI Tutor?", onDismiss = { confirmDownload = false },
-            confirmLabel = "Download ${GemmaModel.sizeLabel}", icon = Icons.Rounded.Download,
-            onConfirm = { confirmDownload = false; vm.startBundledDownload(onNeedsOwnToken = { showSheet = true }) },
+            title = "Download ${offer.displayName}?", onDismiss = { confirmDownload = false },
+            confirmLabel = "Download ${offer.sizeLabel}", icon = Icons.Rounded.Download,
+            onConfirm = { confirmDownload = false; vm.startDownload() },
             text = {
                 Column {
                     Text(
-                        "Google's ${GemmaModel.DISPLAY_NAME} downloads once (${GemmaModel.sizeLabel}) and then runs fully offline on this phone." +
+                        "Picked for your phone (${vm.ramLabel} RAM). ${offer.displayName} downloads once (${offer.sizeLabel}) and then runs fully offline — " +
+                            "on the GPU when your phone supports it." +
                             if (metered) " You're on mobile data — Wi-Fi is recommended." else " Wi-Fi is recommended.",
                     )
                     Spacer(Modifier.height(Spacing.xs))
                     Text(
-                        "Gemma is provided under and subject to the Gemma Terms of Use. By downloading you agree to them and to Google's Gemma Prohibited Use Policy.",
+                        "Made by the Qwen team (Alibaba Cloud), released under the Apache 2.0 licence. No account or sign-in needed; " +
+                            "the file is checked against its published SHA-256 before use.",
                         style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
                     )
-                    StudINTextButton("Read the Gemma Terms of Use", {
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GemmaModel.TERMS_PAGE)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    StudINTextButton("View the model page", {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(offer.modelPage)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                     })
                 }
             },
@@ -234,7 +197,7 @@ fun AiScreen(onNavigate: (String) -> Unit, vm: AiViewModel = hiltViewModel()) {
         title = "Remove the AI Tutor model?", onDismiss = { confirmRemove = false },
         confirmLabel = "Remove", destructive = true, icon = Icons.Rounded.DeleteOutline,
         onConfirm = { confirmRemove = false; vm.deleteModel() },
-        text = { Text("Frees about ${GemmaModel.sizeLabel}. StudIN Lite AI keeps working, and you can download Gemma again any time.") },
+        text = { Text("Frees about ${(llm as? LlmState.Installed)?.sizeBytes?.let(::formatBytes) ?: (llm as? LlmState.Ready)?.sizeBytes?.let(::formatBytes) ?: "the model's space"}. StudIN Lite AI keeps working, and you can download the model again any time.") },
     )
 }
 
@@ -379,7 +342,7 @@ private fun TutorIntro() {
                 Spacer(Modifier.height(Spacing.xxs))
                 Text(
                     if (compact) "Ask, summarise or plan – answered from your own cards and syllabus."
-                    else "Ask about a concept, summarise your notes or plan revision. I answer from your own cards and syllabus – and with Gemma, once you download it.",
+                    else "Ask about a concept, summarise your notes or plan revision. I answer from your own cards and syllabus – and with the full AI model, once you download it.",
                     style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
                 )
             }
@@ -517,19 +480,34 @@ private fun rich(text: String, codeBg: Color): AnnotatedString = buildAnnotatedS
 }
 
 
-// ------------------------------------------------------------------ AI Tutor model (Gemma)
+// ------------------------------------------------------------------ AI Tutor model
 
 @Composable
-private fun ModelMenu(installed: Boolean, useLlm: Boolean, onUseLlm: (Boolean) -> Unit, onImport: () -> Unit, onRemove: () -> Unit) {
+private fun ModelMenu(
+    installed: Boolean,
+    modelName: String,
+    useLlm: Boolean,
+    gpuCapable: Boolean,
+    gpuEnabled: Boolean,
+    onGpu: (Boolean) -> Unit,
+    onUseLlm: (Boolean) -> Unit,
+    onImport: () -> Unit,
+    onRemove: () -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     Box {
         StudINIconButton(Icons.Rounded.MoreVert, "AI Tutor options", { open = true })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, shape = StudINShapes.smallCard) {
             if (installed) {
                 DropdownMenuItem(
-                    text = { Text("Use ${GemmaModel.DISPLAY_NAME}") },
+                    text = { Text("Use $modelName") },
                     leadingIcon = { Icon(if (useLlm) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank, null) },
                     onClick = { onUseLlm(!useLlm); open = false },
+                )
+                if (gpuCapable) DropdownMenuItem(
+                    text = { Text("Use GPU acceleration") },
+                    leadingIcon = { Icon(if (gpuEnabled) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank, null) },
+                    onClick = { onGpu(!gpuEnabled); open = false },
                 )
                 DropdownMenuItem(
                     text = { Text("Remove AI Tutor model") },
@@ -546,29 +524,41 @@ private fun ModelMenu(installed: Boolean, useLlm: Boolean, onUseLlm: (Boolean) -
     }
 }
 
-/** Download offer / progress / ready state for the on-device Gemma tutor. */
+private fun modelName(llm: LlmState): String = when (llm) {
+    is LlmState.Installed -> llm.name
+    is LlmState.Loading -> llm.name
+    is LlmState.Ready -> llm.name
+    else -> "AI model"
+}
+
+/** Download offer / progress / ready state for the on-device tutor model picked for this phone. */
 @Composable
 private fun ModelCard(
     llm: LlmState,
     useLlm: Boolean,
     download: DownloadUi,
     supported: Boolean,
-    checking: Boolean,
+    recommended: TutorModel?,
+    installedModel: TutorModel?,
+    ramLabel: String,
     onDownload: () -> Unit,
     onCancel: () -> Unit,
     onUseLlm: () -> Unit,
 ) {
     val c = StudINTheme.colors
+    val installed = llm is LlmState.Installed || llm is LlmState.Loading || llm is LlmState.Ready
+    // An older model (Gemma 3 1B from v2.2) is installed and a better one fits this phone.
+    val upgrade = recommended?.takeIf { installed && installedModel != null && installedModel != it && installedModel !in ModelCatalog.downloadable }
     when {
         download is DownloadUi.Running -> StudINCard(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StudINIconTile(Icons.Rounded.Download, c.ai, 40.dp)
                 Spacer(Modifier.width(Spacing.sm))
                 Column(Modifier.weight(1f)) {
-                    Text("Downloading AI Tutor", style = MaterialTheme.typography.titleMedium)
+                    Text("Downloading ${recommended?.displayName ?: "AI Tutor"}", style = MaterialTheme.typography.titleMedium)
                     Text(
                         if (download.waiting) "Waiting for an internet connection…"
-                        else "${formatBytes(download.bytes)} of ${GemmaModel.sizeLabel} · ${(download.fraction * 100).toInt()}%",
+                        else "${formatBytes(download.bytes)} of ${formatBytes(download.total)} · ${(download.fraction * 100).toInt()}%",
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                     )
@@ -585,21 +575,40 @@ private fun ModelCard(
                 StudINTextButton("Cancel", onCancel)
             }
         }
-        llm is LlmState.Installed || llm is LlmState.Loading || llm is LlmState.Ready -> StudINCard(
-            Modifier.fillMaxWidth(), containerColor = c.successContainer, border = null,
-        ) {
+        upgrade != null -> StudINCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, c.ai.copy(alpha = 0.5f))) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StudINIconTile(Icons.Rounded.AutoAwesome, c.ai, 40.dp)
+                Spacer(Modifier.width(Spacing.sm))
+                Column(Modifier.weight(1f)) {
+                    Text("Upgrade to ${upgrade.displayName}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+                    Text("${upgrade.sizeLabel} · picked for your phone ($ramLabel RAM)", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                }
+            }
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                "More accurate answers than ${installedModel?.displayName}. It replaces the current model once the download is verified; until then the tutor keeps working.",
+                style = MaterialTheme.typography.bodyMedium, color = c.textSecondary,
+            )
+            if (download is DownloadUi.Failed) { Spacer(Modifier.height(Spacing.sm)); StudINErrorState(download.message) }
+            Spacer(Modifier.height(Spacing.sm))
+            StudINPrimaryButton(if (download is DownloadUi.Failed) "Try again" else "Download ${upgrade.displayName}", onDownload, Modifier.fillMaxWidth(), icon = Icons.Rounded.Download)
+        }
+        installed -> StudINCard(Modifier.fillMaxWidth(), containerColor = c.successContainer, border = null) {
+            val name = modelName(llm)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = c.success)
                 Spacer(Modifier.width(Spacing.sm))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (useLlm) "${GemmaModel.DISPLAY_NAME} is your AI Tutor" else "${GemmaModel.DISPLAY_NAME} is installed but switched off",
+                        if (useLlm) "$name is your AI Tutor" else "$name is installed but switched off",
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Text(
                         when {
-                            !useLlm -> "Lite AI is answering. Turn Gemma on to use it."
+                            !useLlm -> "Lite AI is answering. Turn $name on to use it."
                             llm is LlmState.Loading -> "Loading the model into memory…"
+                            llm is LlmState.Ready && llm.onGpu -> "Runs fully offline · GPU accelerated"
+                            llm is LlmState.Ready -> "Runs fully offline · on the CPU"
                             else -> "Runs fully offline on this phone."
                         },
                         style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
@@ -608,10 +617,10 @@ private fun ModelCard(
                 if (!useLlm) StudINTextButton("Turn on", onUseLlm)
             }
         }
-        !supported || llm is LlmState.Unsupported -> StudINCard(Modifier.fillMaxWidth(), containerColor = c.surfaceSecondary, border = null) {
+        !supported || recommended == null || llm is LlmState.Unsupported -> StudINCard(Modifier.fillMaxWidth(), containerColor = c.surfaceSecondary, border = null) {
             Text("Full AI Tutor isn't available on this phone", style = MaterialTheme.typography.titleSmall)
             Text(
-                "${GemmaModel.DISPLAY_NAME} needs a 64-bit phone with at least 4 GB RAM. StudIN Lite AI keeps working here.",
+                "The on-device model needs a 64-bit phone with at least 4 GB RAM (this phone: $ramLabel). StudIN Lite AI keeps working here.",
                 style = MaterialTheme.typography.bodySmall, color = c.textSecondary,
             )
         }
@@ -621,12 +630,12 @@ private fun ModelCard(
                 Spacer(Modifier.width(Spacing.sm))
                 Column(Modifier.weight(1f)) {
                     Text("Get the full AI Tutor", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-                    Text("Google's ${GemmaModel.DISPLAY_NAME} · ${GemmaModel.sizeLabel} · one-time download", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                    Text("${recommended.displayName} · ${recommended.sizeLabel} · picked for your phone ($ramLabel RAM)", style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
                 }
             }
             Spacer(Modifier.height(Spacing.xs))
             Text(
-                "Richer explanations, better summaries and smarter flashcards. After the download it runs fully offline on this phone.",
+                "Richer explanations, better summaries and smarter flashcards. After a one-time download it runs fully offline, using the GPU when your phone supports it.",
                 style = MaterialTheme.typography.bodyMedium, color = c.textSecondary,
             )
             if (download is DownloadUi.Failed) {
@@ -635,86 +644,10 @@ private fun ModelCard(
             }
             Spacer(Modifier.height(Spacing.sm))
             StudINPrimaryButton(
-                when { checking -> "Connecting…"; download is DownloadUi.Failed -> "Try again"; else -> "Download AI Tutor" }, onDownload, Modifier.fillMaxWidth(),
-                icon = Icons.Rounded.Download, loading = checking,
+                if (download is DownloadUi.Failed) "Try again" else "Download AI Tutor", onDownload, Modifier.fillMaxWidth(),
+                icon = Icons.Rounded.Download,
             )
         }
     }
 }
 
-/** Three steps: accept Google's Gemma licence → create a Read token → paste it and download. */
-@Composable
-private fun DownloadSheet(vm: AiViewModel, onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val access by vm.access.collectAsStateWithLifecycle()
-    var token by remember { mutableStateOf("") }
-    var show by remember { mutableStateOf(false) }
-    val metered = remember { vm.isMetered() }
-    fun open(url: String) {
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-    }
-    StudINBottomSheet(onDismiss = onDismiss, title = "Download AI Tutor") {
-        Text(
-            "${GemmaModel.DISPLAY_NAME} (int4, ${GemmaModel.sizeLabel}) comes from the LiteRT community repository on Hugging Face, where Google publishes Gemma for phones. " +
-                "Google asks every user to accept the Gemma licence once — it's free.",
-            style = MaterialTheme.typography.bodyMedium, color = StudINTheme.colors.textSecondary,
-        )
-        Spacer(Modifier.height(Spacing.md))
-        SetupStep(1, "Accept the Gemma licence", "Sign in to Hugging Face (free) and tap “Acknowledge license” on the model page.") {
-            StudINOutlinedButton("Open model page", { open(GemmaModel.MODEL_PAGE) }, icon = Icons.AutoMirrored.Rounded.OpenInNew)
-        }
-        SetupStep(2, "Create an access token", "In Settings → Access Tokens, create a token with the “Read” role and copy it.") {
-            StudINOutlinedButton("Open token settings", { open(GemmaModel.TOKENS_PAGE) }, icon = Icons.AutoMirrored.Rounded.OpenInNew)
-        }
-        SetupStep(3, "Paste it and download", null) {
-            StudINTextField(
-                value = token, onValueChange = { token = it.trim().take(200); vm.resetAccess() },
-                label = "Hugging Face token", placeholder = "hf_…",
-                visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardType = KeyboardType.Password, imeAction = ImeAction.Done,
-                isError = access is AccessCheck.Error,
-                supportingText = (access as? AccessCheck.Error)?.message,
-                trailingIcon = {
-                    StudINIconButton(if (show) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, if (show) "Hide token" else "Show token", { show = !show })
-                },
-            )
-        }
-        if (metered) {
-            Text(
-                "You're on mobile data. This is a ${GemmaModel.sizeLabel} download — Wi-Fi is recommended.",
-                style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.warning,
-                modifier = Modifier.padding(bottom = Spacing.xs),
-            )
-        }
-        StudINPrimaryButton(
-            if (access == AccessCheck.Checking) "Checking access…" else "Download ${GemmaModel.sizeLabel}",
-            onClick = { vm.startDownload(token, onStarted = onDismiss) },
-            modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Download,
-            enabled = token.length >= 8, loading = access == AccessCheck.Checking,
-        )
-        Spacer(Modifier.height(Spacing.xs))
-        Text(
-            "Your token is used only to authorise this download and is cleared when it finishes. The file is checked against " +
-                "Google's published SHA-256 before use. By downloading you accept the Gemma Terms of Use.",
-            style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary,
-        )
-        StudINTextButton("Read the Gemma Terms of Use", { open(GemmaModel.TERMS_PAGE) })
-    }
-}
-
-@Composable
-private fun SetupStep(n: Int, title: String, body: String?, action: @Composable () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(bottom = Spacing.md), verticalAlignment = Alignment.Top) {
-        Box(
-            Modifier.size(28.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) { Text("$n", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer) }
-        Spacer(Modifier.width(Spacing.sm))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            if (body != null) Text(body, style = MaterialTheme.typography.bodySmall, color = StudINTheme.colors.textSecondary)
-            Spacer(Modifier.height(Spacing.xs))
-            action()
-        }
-    }
-}

@@ -39,6 +39,8 @@ data class AppSettings(
     val aiModelFile: String? = null,
     val aiModelSha256: String? = null,
     val aiUseLlm: Boolean = true,
+    /** Run the AI Tutor model on the GPU when the phone supports it (falls back to CPU). */
+    val aiGpuEnabled: Boolean = true,
     val allowKeywords: Set<String> = emptySet(),
     val blockKeywords: Set<String> = emptySet(),
 )
@@ -62,6 +64,8 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
         val modelFile = stringPreferencesKey("ai_model_file")
         val modelSha = stringPreferencesKey("ai_model_sha")
         val useLlm = booleanPreferencesKey("ai_use_llm")
+        val gpu = booleanPreferencesKey("ai_gpu_enabled")
+        fun gpuState(modelId: String) = stringPreferencesKey("ai_gpu_state_$modelId")
         val allowKw = stringSetPreferencesKey("allow_keywords")
         val blockKw = stringSetPreferencesKey("block_keywords")
         // Focus snapshot (persisted for process death / reboot reconciliation)
@@ -93,6 +97,7 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
             aiModelFile = p[K.modelFile],
             aiModelSha256 = p[K.modelSha],
             aiUseLlm = p[K.useLlm] ?: true,
+            aiGpuEnabled = p[K.gpu] ?: true,
             allowKeywords = p[K.allowKw] ?: emptySet(),
             blockKeywords = p[K.blockKw] ?: emptySet(),
         )
@@ -112,6 +117,12 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
     suspend fun setDefaultFocusMinutes(v: Int) = store.edit { it[K.focusMin] = v.coerceIn(5, 180) }
     suspend fun setHaptics(v: Boolean) = store.edit { it[K.haptics] = v }
     suspend fun setUseLlm(v: Boolean) = store.edit { it[K.useLlm] = v }
+    suspend fun setGpuEnabled(v: Boolean) = store.edit { it[K.gpu] = v }
+
+    /** Per-model GPU knowledge (see GpuPolicy). DataStore edit completes before returning. */
+    suspend fun gpuState(modelId: String): com.studin.app.ai.GpuState =
+        store.data.first()[K.gpuState(modelId)]?.let { runCatching { com.studin.app.ai.GpuState.valueOf(it) }.getOrNull() } ?: com.studin.app.ai.GpuState.UNKNOWN
+    suspend fun setGpuState(modelId: String, state: com.studin.app.ai.GpuState) = store.edit { it[K.gpuState(modelId)] = state.name }
     suspend fun setModel(file: String?, sha: String?) = store.edit {
         if (file == null) { it.remove(K.modelFile); it.remove(K.modelSha) } else { it[K.modelFile] = file; it[K.modelSha] = sha ?: "" }
     }

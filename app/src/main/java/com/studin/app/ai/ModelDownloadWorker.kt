@@ -21,8 +21,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Downloads the Gemma model in a user-visible foreground job (survives leaving the app), resumes
- * partial downloads, verifies SHA-256 + size, installs it and switches the tutor to it.
+ * Downloads a catalog model ([ModelCatalog]) in a user-visible foreground job (survives leaving
+ * the app), resumes partial downloads, verifies SHA-256 + size, installs it and switches the
+ * tutor to it. The Qwen repositories are public: no account or token is involved.
  */
 @HiltWorker
 class ModelDownloadWorker @AssistedInject constructor(
@@ -33,39 +34,50 @@ class ModelDownloadWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     /** Required for expedited work on Android 11 and older. */
-    override suspend fun getForegroundInfo(): ForegroundInfo =
-        foregroundInfo(partFile(applicationContext).length(), GemmaModel.SIZE_BYTES)
+    private val model: TutorModel? get() = ModelCatalog.byId(inputData.getString(KEY_MODEL_ID))
+
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        val m = model ?: ModelCatalog.QWEN25_1_5B
+        return foregroundInfo(m, partFile(applicationContext, m).length(), m.sizeBytes)
+    }
 
     override suspend fun doWork(): Result {
-        val token = inputData.getString(KEY_TOKEN)
-        val part = partFile(applicationContext)
-        val needed = GemmaModel.SIZE_BYTES - part.length() + 50_000_000L
-        if (part.parentFile!!.apply { mkdirs() }.usableSpace < needed) {
-            return failure("Not enough free storage. StudIN needs about ${needed / 1_000_000} MB free for the AI Tutor.")
+        val model = model?.takeIf { it in ModelCatalog.downloadable }
+        if (model == null) {
+            // e.g. a Gemma download queued by v2.2 that resumed after the update.
+            downloadsDir(applicationContext).listFiles()?.forEach { it.delete() }
+            return failure("Unknown AI model")
         }
-        runCatching { setForeground(foregroundInfo(part.length(), GemmaModel.SIZE_BYTES)) }
+        val part = partFile(applicationContext, model)
+        // Partial files of other models (an older or switched download) only waste space.
+        downloadsDir(applicationContext).listFiles()?.filter { it != part }?.forEach { it.delete() }
+        val needed = model.sizeBytes - part.length() + 100_000_000L
+        if (part.parentFile!!.apply { mkdirs() }.usableSpace < needed) {
+            return failure("Not enough free storage. StudIN needs about ${(needed + 500_000) / 1_000_000} MB free for ${model.displayName}.")
+        }
+        runCatching { setForeground(foregroundInfo(model, part.length(), model.sizeBytes)) }
 
         return try {
             var lastPercent = -1
             withContext(Dispatchers.IO) {
                 ModelDownloader().download(
-                    url = GemmaModel.DOWNLOAD_URL, token = token, part = part,
-                    expectedSize = GemmaModel.SIZE_BYTES, expectedSha256 = GemmaModel.SHA256,
+                    url = model.downloadUrl, token = null, part = part,
+                    expectedSize = model.sizeBytes, expectedSha256 = model.sha256,
                     onProgress = { bytes, total ->
                         val pct = (bytes * 100 / total).toInt()
                         if (pct != lastPercent) {
                             lastPercent = pct
                             setProgressAsync(workDataOf(KEY_BYTES to bytes, KEY_TOTAL to total))
-                            runCatching { setForegroundAsync(foregroundInfo(bytes, total)) }
+                            runCatching { setForegroundAsync(foregroundInfo(model, bytes, total)) }
                         }
                     },
                     isCancelled = { isStopped },
                 )
             }
-            install(part)
+            install(model, part)
             Result.success()
         } catch (f: DownloadFailure) {
-            if (f.retryable && runAttemptCount < MAX_ATTEMPTS) Result.retry() else failure(f.message ?: "Download failed", f)
+            if (f.retryable && runAttemptCount < MAX_ATTEMPTS) Result.retry() else failure(f.message ?: "Download failed")
         } catch (e: java.io.IOException) {
             // Network drop etc.: keep the partial file and let WorkManager retry with backoff.
             if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else failure("Network problem: ${e.message ?: "connection lost"}. Try again on Wi-Fi.")
@@ -73,26 +85,25 @@ class ModelDownloadWorker @AssistedInject constructor(
     }
 
     /** Move the verified file into the model directory and make it the active tutor engine. */
-    private suspend fun install(part: File) {
+    private suspend fun install(model: TutorModel, part: File) {
         llm.unload()
         val dir = File(applicationContext.filesDir, "models").apply { mkdirs() }
+        // Replaces any older model (e.g. Gemma 3 1B) only now that the new one is verified.
         dir.listFiles()?.forEach { it.delete() }
-        val target = File(dir, GemmaModel.FILE_NAME)
+        val target = File(dir, model.fileName)
         if (!part.renameTo(target)) { part.copyTo(target, overwrite = true); part.delete() }
-        prefs.setModel(GemmaModel.FILE_NAME, GemmaModel.SHA256)
+        prefs.setModel(model.fileName, model.sha256)
         prefs.setUseLlm(true)
         llm.refreshState()
     }
 
-    private fun failure(message: String, f: DownloadFailure? = null): Result = Result.failure(
-        workDataOf(KEY_ERROR to message, KEY_NEEDS_TOKEN to (f is DownloadFailure.TokenRequired || f is DownloadFailure.TokenRejected || f is DownloadFailure.LicenceNotAccepted)),
-    )
+    private fun failure(message: String): Result = Result.failure(workDataOf(KEY_ERROR to message))
 
-    private fun foregroundInfo(bytes: Long, total: Long): ForegroundInfo {
+    private fun foregroundInfo(model: TutorModel, bytes: Long, total: Long): ForegroundInfo {
         val pct = if (total > 0) (bytes * 100 / total).toInt() else 0
         val n: Notification = NotificationCompat.Builder(applicationContext, Notifications.CHANNEL_DOWNLOADS)
             .setSmallIcon(R.drawable.ic_stat_studin)
-            .setContentTitle("Downloading AI Tutor (${GemmaModel.DISPLAY_NAME})")
+            .setContentTitle("Downloading AI Tutor (${model.displayName})")
             .setContentText("${bytes / 1_000_000} of ${total / 1_000_000} MB · $pct%")
             .setProgress(100, pct, bytes == 0L)
             .setOngoing(true).setOnlyAlertOnce(true).setSilent(true)
@@ -103,14 +114,15 @@ class ModelDownloadWorker @AssistedInject constructor(
     }
 
     companion object {
-        const val UNIQUE_NAME = "studin-gemma-download"
-        const val KEY_TOKEN = "token"
+        const val UNIQUE_NAME = "studin-model-download"
+        const val KEY_MODEL_ID = "modelId"
+        const val TAG_PREFIX = "model:"
         const val KEY_BYTES = "bytes"
         const val KEY_TOTAL = "total"
         const val KEY_ERROR = "error"
-        const val KEY_NEEDS_TOKEN = "needsToken"
         private const val MAX_ATTEMPTS = 5
 
-        fun partFile(context: Context) = File(File(context.filesDir, "downloads"), GemmaModel.FILE_NAME + ".part")
+        fun downloadsDir(context: Context) = File(context.filesDir, "downloads")
+        fun partFile(context: Context, model: TutorModel) = File(downloadsDir(context), model.fileName + ".part")
     }
 }

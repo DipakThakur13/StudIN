@@ -54,3 +54,20 @@ inside one user turn, every message (incl. identity/plans) went to the model, cr
 only history), `ReplyGuard` (clean/stop/finish), calm sampling with native early stop, inline
 markdown rendering, an accuracy note, a model-load mutex (previously a prewarm and a first question
 could load the model twice), idle/memory-pressure unload and throttled streaming/scrolling.
+
+## v2.3 update — model picked by RAM, GPU acceleration
+Request: "check device RAM: 4 GB → Qwen2.5, 8 GB → Qwen3 4B; if the device allows GPU, use it."
+* `ModelCatalog` reads `ActivityManager.MemoryInfo.totalMem`: ≥ 7.0 GB reported (8 GB phones) →
+  Qwen3 4B (2.3 GB), 3.3–7.0 GB (4–6 GB phones) → Qwen2.5 1.5B (1.6 GB), else Lite AI only. The
+  card says "picked for your phone (8 GB RAM)"; the confirm dialog names the Apache 2.0 licence.
+  No Hugging Face token any more (public repos) — the token sheet and bundled key were removed.
+* Runtime moved to Google LiteRT-LM (`.litertlm`). GPU (OpenCL, optional `uses-native-library`)
+  is tried first; `GpuPolicy` makes it crash-safe and the card shows "GPU accelerated" or "on the
+  CPU". ⋮ → *Use GPU acceleration* toggles it.
+* Phones that already have Gemma 3 1B see an **Upgrade to Qwen…** card; the old model keeps
+  working until the new one verifies.
+* Tutor fixes from the v2.2 field screenshots: short new topics ("linux os") are no longer
+  treated as follow-ups, code questions get a 220-word budget and a "complete code block" rule,
+  invented links and empty bullets are removed, Qwen `<think>` blocks are hidden, and flashcard
+  generation no longer cuts at the second "Q:" line.
+

@@ -103,4 +103,55 @@ class ReplyGuardTest {
         assertTrue(ReplyGuard.finish("Here:\n```python\nprint(\"hi\")", truncated = true).trimEnd().endsWith("```"))
         assertEquals("Fine.", ReplyGuard.finish("Fine.", truncated = false))
     }
+
+    @Test fun shortNewTopicsAreNotFollowUps() {
+        // Bug report: "linux os" right after "operating system" got the previous answer mixed in.
+        assertFalse(TutorGuard.isFollowUp("linux os"))
+        assertFalse(TutorGuard.isFollowUp("binary search"))
+        assertFalse(TutorGuard.isFollowUp("photosynthesis"))
+        assertFalse(TutorGuard.isFollowUp("what is gate exam"))
+        assertTrue(TutorGuard.isFollowUp("but why"))
+        assertTrue(TutorGuard.isFollowUp("more"))
+        assertTrue(TutorGuard.isFollowUp("explain in hindi"))
+        assertTrue(TutorGuard.isFollowUp("what about windows"))
+    }
+
+    @Test fun codeQuestionsGetRoomForCode() {
+        assertTrue(TutorGuard.wantsCode("python print"))
+        assertTrue(TutorGuard.wantsCode("Write a C++ program for binary search"))
+        assertTrue(TutorGuard.wantsCode("binary search code in java"))
+        assertFalse(TutorGuard.wantsCode("what is an operating system"))
+        assertEquals(220, TutorGuard.maxWordsFor("python print", TutorGuard.Intent.STUDY))
+        assertEquals(120, TutorGuard.maxWordsFor("linux os", TutorGuard.Intent.STUDY))
+        assertEquals(150, TutorGuard.maxWordsFor("anything", TutorGuard.Intent.SUMMARIZE))
+        val p = TutorGuard.buildPrompt("binary search code in python", TutorGuard.Intent.STUDY, null)
+        assertTrue(p.contains("under 220 words"))
+        assertTrue(p.contains("Do not include website links"))
+    }
+
+    @Test fun hidesQwenThinkingAndChatTokens() {
+        assertEquals("Paris is the capital.", ReplyGuard.clean("<think>\nThe user asks…\n</think>\n\nParis is the capital.<|im_end|>"))
+        // Reasoning still streaming: show nothing yet.
+        assertEquals("", ReplyGuard.clean("<think>Let me think about"))
+        assertEquals("Answer.", ReplyGuard.clean("<|im_start|>assistant\nAnswer.<|endoftext|>").removePrefix("assistant").trim())
+    }
+
+    @Test fun dropsInventedLinks() {
+        val raw = "GATE is a national exam. Visit https://gate.example.ac.in for the schedule.\n- Check [the official site](https://gate.iitk.ac.in) often.\n- Syllabus covers maths.\n- www.fake-gate.com"
+        val t = ReplyGuard.clean(raw)
+        assertFalse(t, t.contains("http") || t.contains("www."))
+        assertTrue(t, t.contains("GATE is a national exam."))
+        assertTrue(t, t.contains("Check the official site often."))
+        assertTrue(t, t.contains("- Syllabus covers maths."))
+        // URLs inside code are code, not links.
+        val code = "```python\nrequests.get(\"https://api.example.com\")\n```"
+        assertEquals(code, ReplyGuard.clean(code))
+    }
+
+    @Test fun dropsEmptyBulletsAndKeepsFlashcardFormat() {
+        assertEquals("- One\n- Two", ReplyGuard.clean("- One\n-\n•\n- Two"))
+        val cards = "Q: What is OS?\nA: System software.\nQ: What is a kernel?\nA: Core of the OS."
+        assertEquals(cards, ReplyGuard.clean(cards, qaFormat = true))
+        assertEquals("Q: What is OS?\nA: System software.", ReplyGuard.clean(cards))
+    }
 }

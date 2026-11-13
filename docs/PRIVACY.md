@@ -7,10 +7,12 @@ data and has no account, ads, trackers or analytics SDKs (ML Kit's usage-log upl
 disabled at build time).
 
 The app uses the internet for **one thing only**: when you tap **Download AI Tutor**, it
-downloads Google's Gemma 3 1B model (555 MB) from Hugging Face. The download is authorised with
-StudIN's built-in read-only Hugging Face key (or, as a fallback, your own token). The key is sent
-only to `huggingface.co`; nothing about you or your studies is sent. Gemma is provided under and
-subject to the [Gemma Terms of Use](https://ai.google.dev/gemma/terms).
+downloads the AI model picked for your phone's memory — Qwen2.5 1.5B (1.6 GB) on 4–6 GB phones or
+Qwen3 4B (2.3 GB) on 8 GB+ phones — from Hugging Face's public `litert-community` repositories.
+No account, sign-in or token is used and nothing about you or your studies is sent. StudIN reads
+the phone's total RAM on the device only to choose the model; it is not stored or shared. The
+models are released by the Qwen team under the Apache 2.0 licence and run entirely on your phone
+(GPU or CPU) after the download.
 
 ## What StudIN stores (on your device only)
 | Data | Why | Retention |
