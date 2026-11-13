@@ -2,9 +2,9 @@
 
 | File | Size | Use it for |
 |---|---|---|
-| [`StudIN-v2.3.0-arm64.apk`](StudIN-v2.3.0-arm64.apk) | @ARM64@ | **Recommended.** Almost every Android phone made since ~2017 (64-bit ARM). Full AI Tutor with GPU. |
-| [`StudIN-v2.3.0-x86_64.apk`](StudIN-v2.3.0-x86_64.apk) | @X86@ | Android Studio emulators (x86_64) and x86 Chromebooks. |
-| [`StudIN-v2.3.0-armv7.apk`](StudIN-v2.3.0-armv7.apk) | @V7@ | Old 32-bit-only phones. Everything except the downloadable AI model (Lite AI works). |
+| [`StudIN-v2.3.0-arm64.apk`](StudIN-v2.3.0-arm64.apk) | 52.1 MB | **Recommended.** Almost every Android phone made since ~2017 (64-bit ARM). Full AI Tutor with GPU. |
+| [`StudIN-v2.3.0-x86_64.apk`](StudIN-v2.3.0-x86_64.apk) | 59.1 MB | Android Studio emulators (x86_64) and x86 Chromebooks. |
+| [`StudIN-v2.3.0-armv7.apk`](StudIN-v2.3.0-armv7.apk) | 20.6 MB | Old 32-bit-only phones. Everything except the downloadable AI model (Lite AI works). |
 
 * Version **2.3.0** (versionCode 5) · package `com.studin.app` · Android 8.0+ (minSdk 26), targets Android 16 (SDK 36)
 * Release build (R8-minified), signed with a **debug/test key** — not the Play Store key.
